@@ -22,6 +22,7 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 import numpy as np
+import os
 
 '''
 静态变量指定
@@ -100,6 +101,26 @@ def generate_Nv(N):
     return result
 
 
+def generate_ts_matrix(size):
+    """
+    生成游览时间矩阵，对应位置(i,j)对应到tau_ij
+    这里生成的为10~30的随机数
+    :param size: 矩阵的规模
+    :return: matrix
+    """
+    matrix = np.random.randint(10, 31, (size, size))
+    # 上三角转置合并后形成对角矩阵
+    ts_matrix = np.triu(matrix) + np.triu(matrix, 1).T
+    # 主对角线元素为0
+    np.fill_diagonal(ts_matrix, 0)
+    return ts_matrix
+
+
+output_folder = "./data"
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+"""
 # visitor 数据表生成
 visitor_num = generate_Nv(V_NUM)
 time_slots = generate_time_slots(V_NUM)
@@ -110,4 +131,16 @@ visitor_dict = {
 }
 visitor_data = pd.DataFrame(visitor_dict)
 # print(visitor_data.head())
-visitor_data.to_csv("./data/visitor.csv", index=False)
+output_file = os.path.join(output_folder, "visitor.csv")
+visitor_data.to_csv(output_file, index=False)
+"""
+
+# ts 数据表生成
+# 包含有大门，因此最终矩阵规模为 P_NUM + 1
+ts_matrix = generate_ts_matrix(P_NUM + 1)
+# print(ts_matrix)
+ts_data = pd.DataFrame(ts_matrix)
+ts_data.columns = ['g', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
+output_file = os.path.join(output_folder, "ts.csv")
+ts_data.to_csv(output_file, index=False)
+
