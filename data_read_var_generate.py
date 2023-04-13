@@ -23,6 +23,14 @@ import os
 import data_generate
 from gurobipy import GRB
 
+# 指定系数
+P_all_a = 80  # 一票制票价
+P_all_b = 50  # 两部制票价
+c1 = 1  # 票价系数c1
+c2 = 2  # 固定成本系数c2
+c3 = 2  # 行驶成本系数c3
+c4 = 1  # 等待成本系数c4
+
 
 def create_tau():
     """
@@ -71,18 +79,40 @@ def create_Nv_TE():
     return Nv, TE
 
 
+def create_Pv_ts():
+    """
+    从ts.csv生成字典变量PV和ts
+    :return: 字典变量PV，ts；其中PV[v_ID]，ts[v_ID,p]
+    """
+    file_path = os.path.join(data_generate.output_folder, "ts.csv")
+    if not os.path.exists(file_path):
+        print("需要先生成ts.csv")
+    else:
+        # 读取 CSV 文件
+        data = pd.read_csv(file_path)
+        # 根据给定的规则生成字典变量 PV
+        Pv = {}
+        ts = {}
+        for index, row in data.iterrows():
+            Pv[row['ID']] = [idx for idx, value in enumerate(row) if value != -1 and idx != 0]  # 跳过 ID 列
+            for i in range(1, 8):  # 从 1 到 7（包含）
+                ts[row['ID'], i] = row[i]
+        return gb.tupledict(Pv), gb.tupledict(ts)
+
+
 if not os.path.exists(data_generate.output_folder):
     print("需要先运行data_generate.py")
 else:
     #  代码主体
 
     # 由数据表生成multidict变量
-    arcs, tau_ij = create_tau()
+    arcs, tau = create_tau()
     # print(arcs)
     # print(tau_ij)
     Nv, TE = create_Nv_TE()
     # print(Nv)
     # print(TE)
+    Pv, ts = create_Pv_ts()
 
     # 生成tuplelist变量
     v_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM + 1)])
@@ -94,15 +124,24 @@ else:
     # 决策变量
     x = m.addVars(v_ID, arcs, b, R, vtype=GRB.BINARY, name="x")  # x_vijbr
     y = m.addVars(arcs, b, R, vtype=GRB.BINARY, name="y")  # y_ijbr
-    L = m.addVars(v_ID, P)  # L_vi
+    L = m.addVars(v_ID, P, vtype=GRB.BINARY, name="L")  # L_vi
 
     # 时间变量
     z_GA = m.addVars(P, v_ID, vtype=GRB.CONTINUOUS, name="z_GA")  # z^GA_iv
     z_GD = m.addVars(P, v_ID, vtype=GRB.CONTINUOUS, name="z_GD")  # z^GD_iv
-    z_BF = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_GD")  # z^BF_rb
-    z_BS = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_GD")  # z^BS_rb
+    z_BF = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_BF")  # z^BF_rb
+    z_BS = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_BS")  # z^BS_rb
 
+    # 目标函数各项 （一票制）
+    price_all = P_all_a * gb.quicksum(c1 * Nv[v_i] for v_i in Nv)  # [1.1]
+    fix_cost = gb.quicksum(c2 * y[0, j_i, b_i, 1] for j_i in P for b_i in b)  # [1.3]
+    operate_cost = gb.quicksum(c3 * tau[i_i, j_i] * y[i_i, j_i, b_i, r_i]
+                               for i_i, j_i in arcs for b_i in b for r_i in R)  # [1.4]
+    wait_cost = gb.quicksum(c4 *(z_GD[i_i, v_i] - z_GA[i_i, v_i] - ts[i_i, v_i]) + c4*(z_GD[0, v_i] - TE[v_i])
+                            for v_i in v_ID for i_i in Pv[v_i])
+    # 设定目标函数
+    m.setObjective(price_all - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)
 
-
+    # 设定约束
 
     m.write("./data/test1.lp")

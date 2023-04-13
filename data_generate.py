@@ -32,11 +32,11 @@ B_NUM 游船数量
 Cb    游船载客量
 R_MAX 每船最大行程数
 '''
-P_NUM = 7
-V_NUM = 500
-B_NUM = 30
+P_NUM = 7  # 不可修改
+V_NUM = 5
+B_NUM = 3
 Cb = 35
-R_MAX = 20
+R_MAX = 3
 
 output_folder = "./data"
 if not os.path.exists(output_folder):
@@ -245,7 +245,7 @@ def ts_generate(csv_file):
     else:
         print("请检查是否已经生成visitor.csv")
 
-"""
+
 # visitor 数据表生成
 visitor_num = generate_Nv(V_NUM)
 time_slots = generate_time_slots(V_NUM)
@@ -258,9 +258,9 @@ visitor_data = pd.DataFrame(visitor_dict)
 # print(visitor_data.head())
 output_file = os.path.join(output_folder, "visitor.csv")
 visitor_data.to_csv(output_file, index=False)
-"""
 
-"""
+
+
 # tau 数据表生成
 # 包含有大门，因此最终矩阵规模为 P_NUM + 1
 tau_matrix = generate_tau_matrix(P_NUM + 1)
@@ -269,9 +269,9 @@ tau_data = pd.DataFrame(tau_matrix)
 tau_data.columns = ['g', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
 output_file = os.path.join(output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
-"""
 
-"""
+
+
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
-"""
+
