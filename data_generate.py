@@ -271,4 +271,7 @@ output_file = os.path.join(output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
 """
 
+"""
+# tau 数据表生成
 ts_generate('./data/visitor.csv')
+"""
