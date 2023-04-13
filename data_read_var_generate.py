@@ -21,6 +21,7 @@ import pandas as pd
 import gurobipy as gb
 import os
 import data_generate
+from gurobipy import GRB
 
 
 def create_tau():
@@ -47,7 +48,8 @@ def create_tau():
         arcs, tau_ij = gb.multidict(dict_ij)
         return arcs, tau_ij
 
-def  create_Nv_TE():
+
+def create_Nv_TE():
     """
     从 visitor.csv中创建 multidict 变量
     其中键为v_ID,两字典的值分别为Nv和TE
@@ -64,11 +66,9 @@ def  create_Nv_TE():
         df.set_index('ID', inplace=True)
 
         # 创建 Nv 和 TE 字典
-        Nv = gb.multidict(df['NV'].to_dict())
-        TE = gb.multidict(df['TE'].to_dict())
+        Nv = gb.tupledict(df['NV'].to_dict())
+        TE = gb.tupledict(df['TE'].to_dict())
     return Nv, TE
-
-
 
 
 if not os.path.exists(data_generate.output_folder):
@@ -85,11 +85,24 @@ else:
     # print(TE)
 
     # 生成tuplelist变量
-    v_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM+1)])
+    v_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM + 1)])
     P = gb.tuplelist([x for x in range(0, data_generate.P_NUM)])
-    b = gb.tuplelist([x for x in range(1, data_generate.B_NUM+1)])
-    R = gb.tuplelist([x for x in range(1, data_generate.R_MAX+1)])
+    b = gb.tuplelist([x for x in range(1, data_generate.B_NUM + 1)])
+    R = gb.tuplelist([x for x in range(1, data_generate.R_MAX + 1)])
 
     m = gb.Model("test1")
-    x = m.addVars(v_ID, arcs, b, R, name="x")
+    # 决策变量
+    x = m.addVars(v_ID, arcs, b, R, vtype=GRB.BINARY, name="x")  # x_vijbr
+    y = m.addVars(arcs, b, R, vtype=GRB.BINARY, name="y")  # y_ijbr
+    L = m.addVars(v_ID, P)  # L_vi
+
+    # 时间变量
+    z_GA = m.addVars(P, v_ID, vtype=GRB.CONTINUOUS, name="z_GA")  # z^GA_iv
+    z_GD = m.addVars(P, v_ID, vtype=GRB.CONTINUOUS, name="z_GD")  # z^GD_iv
+    z_BF = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_GD")  # z^BF_rb
+    z_BS = m.addVars(R, b, vtype=GRB.CONTINUOUS, name="z_GD")  # z^BS_rb
+
+
+
+
     m.write("./data/test1.lp")
