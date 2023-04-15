@@ -118,7 +118,11 @@ else:
     v_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM + 1)])
     P = gb.tuplelist([x for x in range(0, data_generate.P_NUM+1)])
     b = gb.tuplelist([x for x in range(1, data_generate.B_NUM + 1)])
-    R = gb.tuplelist([x for x in range(1, data_generate.R_MAX + 1)])
+
+    R = gb.tupledict()
+    for key in range(1, data_generate.B_NUM + 1):
+        R[key] = list(range(1, data_generate.R_MAX + 1))
+
 
     m = gb.Model("test1")
     # 决策变量
@@ -149,7 +153,10 @@ else:
     m.setObjective(price_all - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)
 
     # 设定约束
-    m.addConstrs((gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i]) for j_i in Pv[v_i] for r_i in R[b_i] for b_i in b
-                 + L[v_i, i_i] == 1) for v_i in v_ID for i_i in P), name="[1.7]")
-
+    m.addConstrs((
+        gb.quicksum(
+            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in b) + L[
+            v_i, i_i] == 1
+        for v_i in v_ID for i_i in P
+    ), name="[1.7]")
     m.write("./data/test1.lp")
