@@ -31,6 +31,7 @@ c2 = 2  # 固定成本系数c2
 c3 = 2  # 行驶成本系数c3
 c4 = 1  # 等待成本系数c4
 
+M = 100  # 大整数
 
 def create_tau():
     """
@@ -154,9 +155,9 @@ else:
 
     # 设定约束
     m.addConstrs((
-        gb.quicksum(
+        (gb.quicksum(
             gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in b)
-        + L[v_i, i_i] == 1
+        + L[v_i, i_i] == 1)
         for v_i in v_ID for i_i in Pv[v_i] + [0]
     ), name="[1.7]")
     m.addConstrs((
@@ -164,13 +165,80 @@ else:
             gb.quicksum(gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in b) == 1
         for v_i in v_ID
     ), name="[1.8]")
-
     m.addConstrs((
-        gb.quicksum(
-            gb.quicksum(gb.quicksum(x[v_i, i_i, 0, b_i, r_i] for i_i in Pv[v_i]) for r_i in R[b_i]) for b_i in b) == 1
+        (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in b) for i_i in Pv[v_i] + [0])
+         + gb.quicksum(L[v_i, i_i] for i_i in Pv[v_i] + [0]) == 1)
+        for v_i in v_ID for j_i in Pv[v_i]
+    ), name="[1.9]")
+    m.addConstrs((
+        (gb.quicksum(
+            gb.quicksum(gb.quicksum(x[v_i, i_i, 0, b_i, r_i] for i_i in Pv[v_i]) for r_i in R[b_i]) for b_i in b) == 1)
         for v_i in v_ID
     ), name="[1.10]")
     m.addConstrs((
-        gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= 1
+        (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= 1)
         for b_i in b for r_i in R[b_i]
     ), name="[1.11]")
+    m.addConstrs((
+        (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= gb.quicksum(
+            gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P) for i_i in P))
+        for b_i in b for r_i in R[b_i] if r_i >= 2
+    ), name="[1.12]")
+    m.addConstrs((
+        (gb.quicksum(y[j_i, l_i, b_i, r_i] for l_i in P) <= gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for i_i in P))
+        for b_i in b for r_i in R[b_i] if r_i >= 2 for j_i in P
+    ), name="[1.13]")
+    m.addConstrs((
+        (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
+         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) + gb.quicksum(
+             gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0) for i_i in P)))
+        for b_i in b for r_i in R[b_i] if r_i >= 2
+    ), name="[1.14]")
+    m.addConstrs((
+        (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P) == gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P if i_i != 0))
+        for b_i in b
+    ), name="[1.15]")
+    m.addConstrs((
+        (gb.quicksum(Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for v_i in v_ID) <= data_generate.Cb * y[i_i, j_i, b_i, r_i])
+        for i_i in P for j_i in P for b_i in b for r_i in R[b_i]
+    ), name="[1.16]")
+    m.addConstrs((
+        (z_BF[r_i, b_i] == z_BS[r_i, b_i] + gb.quicksum(gb.quicksum(tau[i_i, j_i] * y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P))
+        for b_i in b for r_i in R[b_i]
+    ), name="[1.17]")
+    m.addConstrs((
+        (z_BF[r_i, b_i] >= z_BF[(r_i - 1), b_i])
+        for b_i in b for r_i in R[b_i] if r_i >= 2
+    ), name="[1.18]")
+    m.addConstrs((
+        (z_BS[r_i, b_i] >= z_GA[i_i, v_i] + ts[v_i, i_i] - M * (1-gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]+[0])))
+        for b_i in b for r_i in R[b_i] for v_i in v_ID for i_i in Pv[v_i]
+    ), name="[1.19]")
+    m.addConstrs((
+        (z_BS[r_i, b_i] >= TE[v_i] - M * (1 - gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i])))
+        for b_i in b for r_i in R[b_i] for v_i in v_ID
+    ), name="[1.20]")
+    m.addConstrs((
+        (z_GA[i_i, v_i] - TE[v_i] <= M * L[v_i, i_i])
+        for v_i in v_ID for i_i in Pv[v_i]
+    ), name="[1.21]")
+    m.addConstrs((
+        (-z_GA[i_i, v_i] + TE[v_i] <= M * (1 - L[v_i, i_i]))
+        for v_i in v_ID for i_i in Pv[v_i]
+    ), name="[1.22]")
+    m.addConstrs((
+        (-M * (1 - L[v_i, i_i]) + (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, (r_i - 1)] for j_i in Pv[v_i] + [0])) +(1 - x[v_i, i_i, 0, b_i, r_i]) <= 0)
+        for v_i in v_ID for i_i in Pv[v_i] for b_i in b for r_i in R[b_i] if r_i >= 2
+    ), name="[1.23]")
+    m.addConstrs((
+        (z_GA[i_i, v_i] >= z_BF[r_i, b_i] - M*(1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] +[0])))
+        for b_i in b for r_i in R[b_i] for v_i in v_ID for i_i in Pv[v_i]
+    ), name="[1.24]")
+    m.addConstrs((
+        (z_GA[i_i, v_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        for b_i in b for r_i in R[b_i] for v_i in v_ID for i_i in Pv[v_i]
+    ), name="[1.25]")
+    m.addConstrs((
+        (z_GD[i_i, v_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        for b_i in b for r_i in R[b_i] for v_i in v_ID for i_i in Pv[v_i] +[0]
+    ), name="[1.26]")
