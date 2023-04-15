@@ -16,17 +16,18 @@ Feature description：
 
 # import lib
 import pandas as pd
-
-
+import gurobipy as gb
+from gurobipy import GRB
 
 # 读取 CSV 文件
-df = pd.read_csv('./data/visitor.csv')
+data = pd.read_csv('./data/ts.csv')
 
-# 将 ID 列设置为数据帧的索引
-df.set_index('ID', inplace=True)
-
-# 创建 Nv 和 TE 字典
-Nv = df['NV'].to_dict()
-TE = df['TE'].to_dict()
-print(Nv)
-print(TE)
+# 根据给定的规则生成字典变量 PV
+PV = {}
+ts = {}
+for index, row in data.iterrows():
+    PV[row['ID']] = [idx for idx, value in enumerate(row) if value != -1 and idx != 0]  # 跳过 ID 列
+    for i in range(1, 8):  # 从 1 到 7（包含）
+        ts[row['ID'], i] = row[i]
+# 打印生成的字典变量 PV
+print(ts[2,5])

@@ -116,7 +116,7 @@ else:
 
     # 生成tuplelist变量
     v_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM + 1)])
-    P = gb.tuplelist([x for x in range(0, data_generate.P_NUM)])
+    P = gb.tuplelist([x for x in range(0, data_generate.P_NUM+1)])
     b = gb.tuplelist([x for x in range(1, data_generate.B_NUM + 1)])
     R = gb.tuplelist([x for x in range(1, data_generate.R_MAX + 1)])
 
@@ -137,11 +137,19 @@ else:
     fix_cost = gb.quicksum(c2 * y[0, j_i, b_i, 1] for j_i in P for b_i in b)  # [1.3]
     operate_cost = gb.quicksum(c3 * tau[i_i, j_i] * y[i_i, j_i, b_i, r_i]
                                for i_i, j_i in arcs for b_i in b for r_i in R)  # [1.4]
-    wait_cost = gb.quicksum(c4 *(z_GD[i_i, v_i] - z_GA[i_i, v_i] - ts[i_i, v_i]) + c4*(z_GD[0, v_i] - TE[v_i])
-                            for v_i in v_ID for i_i in Pv[v_i])
+    # wait_cost = gb.quicksum((c4 * (z_GD[i_i, v_i] - z_GA[i_i, v_i] - ts[i_i, v_i]) + c4*(z_GD[0, v_i] - TE[v_i])
+    #                         for i_i in Pv[v_i]) for v_i in v_ID)
+    wait_cost1 = gb.quicksum(gb.quicksum(c4 * z_GD[i_i, v_i] for i_i in Pv[v_i]) for v_i in v_ID)
+    wait_cost2 = gb.quicksum(gb.quicksum(c4 * z_GA[i_i, v_i] for i_i in Pv[v_i])for v_i in v_ID)
+    wait_cost3 = gb.quicksum(gb.quicksum(c4 * ts[v_i, i_i] for i_i in Pv[v_i]) for v_i in v_ID)
+    wait_cost4 = gb.quicksum(c4 * z_GD[0, v_i] for v_i in v_ID)
+    wait_cost5 = gb.quicksum(c4 * TE[v_i] for v_i in v_ID)
+    wait_cost = wait_cost1 - wait_cost2 - wait_cost3 + wait_cost4 - wait_cost5
     # 设定目标函数
     m.setObjective(price_all - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)
 
     # 设定约束
+    m.addConstrs((gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i]) for j_i in Pv[v_i] for r_i in R[b_i] for b_i in b
+                 + L[v_i, i_i] == 1) for v_i in v_ID for i_i in P), name="[1.7]")
 
     m.write("./data/test1.lp")

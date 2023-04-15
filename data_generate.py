@@ -246,6 +246,17 @@ def ts_generate(csv_file):
         print("请检查是否已经生成visitor.csv")
 
 
+def time_diff_in_minutes(time_str):
+    """
+    用于进行数据转换
+    :param time_str:
+    :return: 该时刻与7:00的差
+    """
+    base_time = datetime.strptime("07:00", "%H:%M")
+    current_time = datetime.strptime(time_str, "%H:%M")
+    time_diff = current_time - base_time
+    return time_diff.seconds // 60
+
 # visitor 数据表生成
 visitor_num = generate_Nv(V_NUM)
 time_slots = generate_time_slots(V_NUM)
@@ -271,7 +282,12 @@ output_file = os.path.join(output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
 
 
-
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
+# 替换TE为相距7:00的时间
+df = pd.read_csv('./data/visitor.csv')
+# Calculate the time difference and replace the 'TE' column
+df['TE'] = df['TE'].apply(time_diff_in_minutes)
+# Save the modified dataframe to the same CSV file
+df.to_csv('./data/visitor.csv', index=False)
 
