@@ -31,5 +31,15 @@ from gurobipy import GRB
 #         ts[row['ID'], i] = row[i]
 # # 打印生成的字典变量 PV
 # print(ts[2,5])
-m = {1:10, 2:15, 3:10, 4: 5, 5:10, 6:5, 7:10}
-print(m[7])
+# m = {1:10, 2:15, 3:10, 4: 5, 5:10, 6:5, 7:10}
+# print(m[7])
+
+import pandas as pd
+import gurobipy as gb
+import os
+import data_generate
+from gurobipy import GRB
+
+m = gb.tupledict({1: 10, 2: 15, 3: 10, 4: 5, 5: 10, 6: 5, 7: 10})
+for j in range(1,8):
+    print(m[j])
