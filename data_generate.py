@@ -51,8 +51,8 @@ def generate_time_slots(N):
     """
     time_slots = []
     # 按比例分配时间段内的数量
-    first_slot_count = int(N * 0.6)
-    second_slot_count = int(N * 0.3)
+    first_slot_count = int(N * 0.7)
+    second_slot_count = int(N * 0.2)
     third_slot_count = N - first_slot_count - second_slot_count
 
     # 定义时间段
@@ -107,11 +107,11 @@ def generate_Nv(N):
 def generate_tau_matrix(size):
     """
     生成游览时间矩阵，对应位置(i,j)对应到tau_ij
-    这里生成的为10~30的随机数
+    这里生成的为5~20的随机数
     :param size: 矩阵的规模
     :return: matrix
     """
-    matrix = np.random.randint(10, 31, (size, size))
+    matrix = np.random.randint(5, 21, (size, size))
     # 上三角转置合并后形成对角矩阵
     tau_matrix = np.triu(matrix) + np.triu(matrix, 1).T
     # 主对角线元素为0
@@ -149,11 +149,11 @@ def ts_select(p_list):
     mean_values = {
         1: 40,
         2: 60,
-        3: 70,
-        4: 50,
-        5: 90,
-        6: 120,
-        7: 90
+        3: 40,
+        4: 20,
+        5: 40,
+        6: 20,
+        7: 50
     }
 
     for value in p_list:

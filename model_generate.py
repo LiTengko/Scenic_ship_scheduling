@@ -32,8 +32,9 @@ c2 = 2  # 固定成本系数c2
 c3 = 2  # 行驶成本系数c3
 c4 = 1  # 等待成本系数c4
 
-M = GRB.INFINITY  # 大整数
+M = 100000  # 大整数
 e = 1  # 小整数
+TE = 500  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
 
 
 def create_tau():
@@ -62,7 +63,7 @@ def create_tau():
         return arcs, tau_ij
 
 
-def create_Nv_TE():
+def create_Nv_Te():
     """
     从 visitor.csv中创建 multidict 变量
     其中键为v_ID,两字典的值分别为Nv和TE,两者索引分别为 Nv[v_ID] TE[v_ID]
@@ -80,8 +81,8 @@ def create_Nv_TE():
 
         # 创建 Nv 和 TE 字典
         Nv = gb.tupledict(df['NV'].to_dict())
-        TE = gb.tupledict(df['TE'].to_dict())
-    return Nv, TE
+        Te = gb.tupledict(df['TE'].to_dict())
+    return Nv, Te
 
 
 def create_Pv_ts():
@@ -116,7 +117,7 @@ else:
     B = gb.tuplelist([x for x in range(1, data_generate.B_NUM + 1)])  # 编号：1-B_NUM
     # 由数据表生成
     arcs, tau = create_tau()  # arc[(i,j)] tau[i,j]
-    Nv, TE = create_Nv_TE()  # Nv[v_ID] TE[v_ID]
+    Nv, Te = create_Nv_Te()  # Nv[v_ID] TE[v_ID]
     Pv, ts = create_Pv_ts()  # PV[v_ID] ts[v_ID,p] (p不包含大门 0)
     R = gb.tupledict()
     for key in range(1, data_generate.B_NUM + 1):
@@ -162,7 +163,7 @@ else:
         gb.quicksum((z_GD[i_i, v_i] - z_GA[i_i, v_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
-    wait_cost = wait_cost_1 + gb.quicksum(z_GD[0, v_i] - TE[v_i] for v_i in V_ID)  # (5)
+    wait_cost = wait_cost_1 + gb.quicksum(z_GD[0, v_i] - Te[v_i] for v_i in V_ID)  # (5)
 
     # 设定目标函数
     m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (8)
@@ -233,37 +234,53 @@ else:
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(22)")
     m.addConstrs((
-        (z_BS[r_i, b_i] >= TE[v_i] - M * (1 - gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i])))
+        (z_BS[r_i, b_i] >= Te[v_i] - M * (1 - gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID
     ), name="(23)")
+
     m.addConstrs((
-        (z_GA[i_i, v_i] - TE[v_i] <= M * L[v_i, i_i])
+        (z_GA[i_i, v_i] - TE <= M * L[v_i, i_i])
         for v_i in V_ID for i_i in Pv[v_i]
     ), name="(24)")
     m.addConstrs((
-        (-z_GA[i_i, v_i] + TE[v_i] + e <= M * (1 - L[v_i, i_i]))
+        (-z_GA[i_i, v_i] + TE - e <= M * (1 - L[v_i, i_i]))
         for v_i in V_ID for i_i in Pv[v_i]
     ), name="(25)")
 
-    m.addConstrs((
-        (-M * (1 - L[v_i, i_i]) + (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, (r_i - 1)] for j_i in Pv[v_i] + [0])) + (
-                    1 - x[v_i, i_i, 0, b_i, r_i]) <= 0)
-        for v_i in V_ID for i_i in Pv[v_i] for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(26)")
+    # m.addConstrs((
+    #     (-M * (1 - L[v_i, i_i]) + (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, (r_i - 1)] for j_i in Pv[v_i] + [0])) + (
+    #                 1 - x[v_i, i_i, 0, b_i, r_i]) <= 0)
+    #     for v_i in V_ID for i_i in Pv[v_i] for b_i in B for r_i in R[b_i] if r_i >= 2
+    # ), name="(26)")
 
     m.addConstrs((
         (z_GA[i_i, v_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(27)")
+
     m.addConstrs((
         (z_GA[i_i, v_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(28)")
-
     m.addConstrs((
         (z_GD[i_i, v_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(29)")
+
+    m.addConstrs((
+        (z_GD[i_i, v_i] - z_GA[i_i, v_i] - tau[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
+    ), name="(30)")
+
+    m.addConstrs((
+        (z_GD[0, v_i] - Te[v_i] >= 0) for v_i in V_ID
+    ), name="(31)")
+
     # 写入数据
-    # m.write('./data/price_1_small.lp')
+    m.write('./data/price_1_small.lp')
+    m.write('./data/price_1_small.MPS')
+
     m.optimize()
+    # 输出变量的解值
+    for v in m.getVars():
+        if (v.x - 0) != 0:
+            print(f"{v.varName}: {v.x}")
