@@ -131,8 +131,8 @@ else:
     L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi
 
     # 时间变量
-    z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_iv
-    z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_iv
+    z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_vi
+    z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_vi
     z_BF = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
     z_BS = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
@@ -166,13 +166,13 @@ else:
     wait_cost = wait_cost_1 + gb.quicksum(z_GD[v_i, 0] - Te[v_i] for v_i in V_ID)  # (5)
 
     # 设定目标函数
-    m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (8)
-    # m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+    # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (8)
+    m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
 
     # 设定约束
     m.addConstrs((
         (gb.quicksum(
-            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B)
+            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in B)
          + L[v_i, i_i] == 1)
         for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(10)")
@@ -211,7 +211,7 @@ else:
         for b_i in B for r_i in R[b_i] if r_i >= 2
     ), name="(17)")
     m.addConstrs((
-        (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P) == gb.quicksum(
+        (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P if j_i != 0) == gb.quicksum(
             gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P if i_i != 0))
         for b_i in B
     ), name="(18)")
@@ -268,16 +268,16 @@ else:
     ), name="(29)")
 
     m.addConstrs((
-        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - tau[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
+        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
     ), name="(30)")
 
     m.addConstrs((
         (z_GD[v_i, 0] - Te[v_i] >= 0) for v_i in V_ID
     ), name="(31)")
 
-    # 写入数据
-    m.write('./data/price_1_small.lp')
-    m.write('./data/price_1_small.MPS')
+    # # 写入数据
+    # m.write('./data/price_1_small.lp')
+    # m.write('./data/price_1_small.MPS')
 
     m.optimize()
     # 输出变量的解值
