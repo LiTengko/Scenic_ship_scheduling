@@ -131,8 +131,8 @@ else:
     L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi
 
     # 时间变量
-    z_GA = m.addVars(P, V_ID, vtype=GRB.INTEGER, name="z_GA")  # z^GA_iv
-    z_GD = m.addVars(P, V_ID, vtype=GRB.INTEGER, name="z_GD")  # z^GD_iv
+    z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_iv
+    z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_iv
     z_BF = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
     z_BS = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
@@ -160,10 +160,10 @@ else:
         for b_i in B)  # (4)
     # 计算等待成本
     wait_cost_1 = gb.quicksum(
-        gb.quicksum((z_GD[i_i, v_i] - z_GA[i_i, v_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
+        gb.quicksum((z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
-    wait_cost = wait_cost_1 + gb.quicksum(z_GD[0, v_i] - Te[v_i] for v_i in V_ID)  # (5)
+    wait_cost = wait_cost_1 + gb.quicksum(z_GD[v_i, 0] - Te[v_i] for v_i in V_ID)  # (5)
 
     # 设定目标函数
     m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (8)
@@ -229,7 +229,7 @@ else:
         for b_i in B for r_i in R[b_i] if r_i >= 2
     ), name="(21)")
     m.addConstrs((
-        (z_BS[r_i, b_i] >= z_GA[i_i, v_i] + ts[v_i, i_i] - M * (
+        (z_BS[r_i, b_i] >= z_GA[v_i, i_i] + ts[v_i, i_i] - M * (
                     1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(22)")
@@ -239,11 +239,11 @@ else:
     ), name="(23)")
 
     m.addConstrs((
-        (z_GA[i_i, v_i] - TE <= M * L[v_i, i_i])
+        (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i])
         for v_i in V_ID for i_i in Pv[v_i]
     ), name="(24)")
     m.addConstrs((
-        (-z_GA[i_i, v_i] + TE - e <= M * (1 - L[v_i, i_i]))
+        (-z_GA[v_i, i_i] + TE - e <= M * (1 - L[v_i, i_i]))
         for v_i in V_ID for i_i in Pv[v_i]
     ), name="(25)")
 
@@ -254,25 +254,25 @@ else:
     # ), name="(26)")
 
     m.addConstrs((
-        (z_GA[i_i, v_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        (z_GA[v_i, i_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(27)")
 
     m.addConstrs((
-        (z_GA[i_i, v_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        (z_GA[v_i, i_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(28)")
     m.addConstrs((
-        (z_GD[i_i, v_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        (z_GD[v_i, i_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(29)")
 
     m.addConstrs((
-        (z_GD[i_i, v_i] - z_GA[i_i, v_i] - tau[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
+        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - tau[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
     ), name="(30)")
 
     m.addConstrs((
-        (z_GD[0, v_i] - Te[v_i] >= 0) for v_i in V_ID
+        (z_GD[v_i, 0] - Te[v_i] >= 0) for v_i in V_ID
     ), name="(31)")
 
     # 写入数据
