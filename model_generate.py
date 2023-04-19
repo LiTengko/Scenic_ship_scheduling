@@ -34,7 +34,7 @@ c4 = 1  # 等待成本系数c4
 
 M = 100000  # 大整数
 e = 1  # 小整数
-TE = 500  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
+TE = 400  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
 
 
 def create_tau():
@@ -131,10 +131,10 @@ else:
     L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi
 
     # 时间变量
-    z_GA = m.addVars(P, V_ID, vtype=GRB.CONTINUOUS, name="z_GA")  # z^GA_iv
-    z_GD = m.addVars(P, V_ID, vtype=GRB.CONTINUOUS, name="z_GD")  # z^GD_iv
-    z_BF = m.addVars(R, B, vtype=GRB.CONTINUOUS, name="z_BF")  # z^BF_rb
-    z_BS = m.addVars(R, B, vtype=GRB.CONTINUOUS, name="z_BS")  # z^BS_rb
+    z_GA = m.addVars(P, V_ID, vtype=GRB.INTEGER, name="z_GA")  # z^GA_iv
+    z_GD = m.addVars(P, V_ID, vtype=GRB.INTEGER, name="z_GD")  # z^GD_iv
+    z_BF = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
+    z_BS = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
     # 目标函数各项
     # 一票制票价
@@ -206,7 +206,7 @@ else:
     ), name="(16)")
     m.addConstrs((
         (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
-         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) + gb.quicksum(
+         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) - gb.quicksum(
              gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0) for i_i in P if i_i != 0)))
         for b_i in B for r_i in R[b_i] if r_i >= 2
     ), name="(17)")
