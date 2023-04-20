@@ -35,8 +35,8 @@ R_MAX 每船最大行程数
 P_NUM = 7  # 不可修改
 V_NUM = 5
 B_NUM = 3
-Cb = 35
-R_MAX = 3
+Cb = 20
+R_MAX = 10
 
 output_folder = "./data"
 if not os.path.exists(output_folder):

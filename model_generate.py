@@ -126,15 +126,15 @@ else:
     '''模型创建'''
     m = gb.Model("test1")
     # 决策变量
-    x = m.addVars(V_ID, arcs, B, R, vtype=GRB.BINARY, name="x")  # x_vijbr
-    y = m.addVars(arcs, B, R, vtype=GRB.BINARY, name="y")  # y_ijbr
+    x = m.addVars(V_ID, arcs, B, R[1], vtype=GRB.BINARY, name="x")  # x_vijbr
+    y = m.addVars(arcs, B, R[1], vtype=GRB.BINARY, name="y")  # y_ijbr
     L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi
 
     # 时间变量
     z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_vi
     z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_vi
-    z_BF = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
-    z_BS = m.addVars(R, B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
+    z_BF = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
+    z_BS = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
     # 目标函数各项
     # 一票制票价
@@ -191,6 +191,14 @@ else:
             gb.quicksum(gb.quicksum(x[v_i, i_i, 0, b_i, r_i] for i_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1)
         for v_i in V_ID
     ), name="(13)")
+    # m.addConstrs((
+    #     (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P if i_i != 0) <= 1)
+    #     for b_i in B for r_i in R[b_i]
+    # ), name="(14.1)")
+    # m.addConstrs((
+    #     (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0) for i_i in P) <= 1)
+    #     for b_i in B for r_i in R[b_i]
+    # ), name="(14.2)")
     m.addConstrs((
         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= 1)
         for b_i in B for r_i in R[b_i]
@@ -279,6 +287,10 @@ else:
     # m.write('./data/price_1_small.lp')
     # m.write('./data/price_1_small.MPS')
 
+    # 设置最大求解时间为30min
+    m.Params.TimeLimit = 1800
+    # 设置gap为5%
+    m.Params.MIPGap = 0.05
     m.optimize()
     # 输出变量的解值
     for v in m.getVars():
