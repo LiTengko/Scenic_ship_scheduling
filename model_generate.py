@@ -282,6 +282,20 @@ else:
     m.addConstrs((
         (z_GD[v_i, 0] - Te[v_i] >= 0) for v_i in V_ID
     ), name="(31)")
+    '''To Test'''
+    m.addConstrs((
+        (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) <= 1 + M * (
+                    1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) + M * L[
+             v_i, i_i] + M * (1 - L[v_i, j_i]))
+        for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
+    ), name="(32)")
+    m.addConstrs((
+        (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) >= 1 - M * (
+                    1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) - M * L[
+             v_i, i_i] - M * (1 - L[v_i, j_i]))
+        for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
+    ), name="(33)")
+
 
     # # 写入数据
     # m.write('./data/price_1_small.lp')
