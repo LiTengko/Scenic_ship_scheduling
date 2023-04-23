@@ -66,7 +66,8 @@ from gurobipy import GRB
 #
 # arcs, tau = create_tau()
 # print(tau[1, 7])
-P = [0, 1, 2, 3, 4]
-a = [100, 1, 2, 3, 4]
+R = gb.tupledict()
+for key in range(1, data_generate.B_NUM + 1):
+    R[key] = list(range(1, data_generate.R_MAX + 1))
 
-print(sum(a[i_i] for i_i in P if i_i != 0 ))
+print(R[2])

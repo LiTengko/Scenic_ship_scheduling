@@ -34,7 +34,7 @@ c4 = 1  # 等待成本系数c4
 
 M = 100000  # 大整数
 e = 1  # 小整数
-TE = 400  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
+TE = 570  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
 
 
 def create_tau():
@@ -145,11 +145,11 @@ else:
             gb.quicksum(
                 gb.quicksum(
                     gb.quicksum(c1 * pm[j_i] * Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i])
-                    for i_i in Pv[v_i]+[0])
+                    for i_i in Pv[v_i] + [0])
                 for r_i in R[b_i])
             for b_i in B)
         for v_i in V_ID)
-    price_2 = p_separate + gb.quicksum(P_all_b * c1 * Nv[v_i] for v_i in V_ID) # (2)
+    price_2 = p_separate + gb.quicksum(P_all_b * c1 * Nv[v_i] for v_i in V_ID)  # (2)
     fix_cost = gb.quicksum(gb.quicksum(c2 * y[0, j_i, b_i, 1] for j_i in P if j_i != 0) for b_i in B)  # (3)
     operate_cost = gb.quicksum(
         gb.quicksum(
@@ -172,7 +172,8 @@ else:
     # 设定约束
     m.addConstrs((
         (gb.quicksum(
-            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in B)
+            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in
+            B)
          + L[v_i, i_i] == 1)
         for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(10)")
@@ -204,6 +205,10 @@ else:
         for b_i in B for r_i in R[b_i]
     ), name="(14)")
     m.addConstrs((
+        (gb.quicksum(y[i_i, i_i, b_i, r_i] for i_i in P) == 0)
+        for b_i in B for r_i in R[b_i]
+    ), name="(14.1)")
+    m.addConstrs((
         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= gb.quicksum(
             gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P) for i_i in P))
         for b_i in B for r_i in R[b_i] if r_i >= 2
@@ -213,9 +218,23 @@ else:
         for b_i in B for r_i in R[b_i] if r_i >= 2 for j_i in P
     ), name="(16)")
     m.addConstrs((
+        (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, l_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
+                     Pv[v_i] + [0]) <=
+         gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
+                     Pv[v_i] + [0]))
+        for v_i in V_ID for j_i in Pv[v_i] + [0]
+    ), name="(16.1)")
+    m.addConstrs((
+        (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, l_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
+                     Pv[v_i] + [0]) <=
+         gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
+                     Pv[v_i] + [0]))
+        for v_i in V_ID for j_i in Pv[v_i] + [0]
+    ), name="(16.2)")
+    m.addConstrs((
         (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
          (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) - gb.quicksum(
-             gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0) for i_i in P if i_i != 0)))
+             gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0 & i_i != j_i) for i_i in P if i_i != 0)))
         for b_i in B for r_i in R[b_i] if r_i >= 2
     ), name="(17)")
     m.addConstrs((
@@ -233,12 +252,12 @@ else:
         for b_i in B for r_i in R[b_i]
     ), name="(20)")
     m.addConstrs((
-        (z_BF[r_i, b_i] >= z_BF[(r_i - 1), b_i])
+        (z_BS[r_i, b_i] >= z_BF[(r_i - 1), b_i])
         for b_i in B for r_i in R[b_i] if r_i >= 2
     ), name="(21)")
     m.addConstrs((
         (z_BS[r_i, b_i] >= z_GA[v_i, i_i] + ts[v_i, i_i] - M * (
-                    1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+                1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
     ), name="(22)")
     m.addConstrs((
@@ -285,17 +304,16 @@ else:
     '''To Test'''
     m.addConstrs((
         (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) <= 1 + M * (
-                    1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) + M * L[
+                1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) + M * L[
              v_i, i_i] + M * (1 - L[v_i, j_i]))
         for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
     ), name="(32)")
     m.addConstrs((
         (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) >= 1 - M * (
-                    1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) - M * L[
+                1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) - M * L[
              v_i, i_i] - M * (1 - L[v_i, j_i]))
         for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
     ), name="(33)")
-
 
     # # 写入数据
     # m.write('./data/price_1_small.lp')
