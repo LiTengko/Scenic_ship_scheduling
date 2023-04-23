@@ -239,7 +239,7 @@ else:
     ), name="(17)")
     m.addConstrs((
         (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P if j_i != 0) == gb.quicksum(
-            gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P if i_i != 0))
+            gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P))
         for b_i in B
     ), name="(18)")
     m.addConstrs((
