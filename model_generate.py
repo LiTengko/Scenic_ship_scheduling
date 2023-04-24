@@ -34,7 +34,7 @@ c4 = 3  # 等待成本系数c4
 
 M = 100000  # 大整数
 e = 1  # 小整数
-TE = 540  # 设置最晚入园时间为16:30,计算与7：00的差值为540 min
+TE = 500  # 设置最晚入园时间为16:30,计算与7：00的差值为540 min  TE应小于所有游客TE
 
 
 def create_tau():
@@ -172,7 +172,7 @@ else:
     # 设定约束
     m.addConstrs((
         (gb.quicksum(
-            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in
+            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in
             B)
          + L[v_i, i_i] == 1)
         for v_i in V_ID for i_i in Pv[v_i] + [0]
@@ -222,14 +222,14 @@ else:
                      Pv[v_i] + [0]) <=
          gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
                      Pv[v_i] + [0]))
-        for v_i in V_ID for j_i in Pv[v_i] + [0]
+        for v_i in V_ID for j_i in Pv[v_i]
     ), name="(16.1)")
     m.addConstrs((
         (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, l_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
                      Pv[v_i] + [0]) <=
          gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
                      Pv[v_i] + [0]))
-        for v_i in V_ID for j_i in Pv[v_i] + [0]
+        for v_i in V_ID for j_i in Pv[v_i]
     ), name="(16.2)")
     m.addConstrs((
         (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
@@ -324,8 +324,8 @@ else:
     # m.write('./data/price_1_small.lp')
     # m.write('./data/price_1_small.MPS')
 
-    # 设置最大求解时间为30min
-    m.Params.TimeLimit = 1800
+    # 设置最大求解时间为50min
+    m.Params.TimeLimit = 3000
     # 设置gap为5%
     m.Params.MIPGap = 0.05
     m.optimize()

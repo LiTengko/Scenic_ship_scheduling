@@ -26,7 +26,7 @@ import os
 
 P_NUM = 7  # 不可修改
 V_NUM = 5
-B_NUM = 3
+B_NUM = 4
 Cb = 20
 R_MAX = 10
 

@@ -91,12 +91,12 @@ def generate_Nv(N):
 
 def generate_tau_matrix(size):
     """
-    生成游览时间矩阵，对应位置(i,j)对应到tau_ij
-    这里生成的为5~20的随机数
+    生成路程时间矩阵，对应位置(i,j)对应到tau_ij
+    这里生成的为35~90的随机数
     :param size: 矩阵的规模
     :return: matrix
     """
-    matrix = np.random.randint(5, 21, (size, size))
+    matrix = np.random.randint(15, 35, (size, size))
     # 上三角转置合并后形成对角矩阵
     tau_matrix = np.triu(matrix) + np.triu(matrix, 1).T
     # 主对角线元素为0
