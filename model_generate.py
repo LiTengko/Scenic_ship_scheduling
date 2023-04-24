@@ -20,21 +20,21 @@ Feature description：
 import pandas as pd
 import gurobipy as gb
 import os
-import data_generate
+import model_index
 from gurobipy import GRB
 
 # 指定系数
 P_all_a = 80  # 一票制票价
 P_all_b = 50  # 两部制票价
 pm = gb.tupledict({1: 10, 2: 15, 3: 10, 4: 5, 5: 10, 6: 5, 7: 10})  # 两部制下各景点票价
-c1 = 1  # 票价系数c1
-c2 = 2  # 固定成本系数c2
+c1 = 3  # 票价系数c1
+c2 = 1  # 固定成本系数c2
 c3 = 2  # 行驶成本系数c3
-c4 = 1  # 等待成本系数c4
+c4 = 3  # 等待成本系数c4
 
 M = 100000  # 大整数
 e = 1  # 小整数
-TE = 570  # 设置最晚入园时间为17:00,计算与7：00的差值为570 min
+TE = 540  # 设置最晚入园时间为16:30,计算与7：00的差值为540 min
 
 
 def create_tau():
@@ -44,7 +44,7 @@ def create_tau():
     tau_ij 以 tau[i,j]索引  arc为包含(i,j)的列表
     :return: multidict变量,路径arcs 和 时间tau_ij
     """
-    file_path = os.path.join(data_generate.output_folder, "tau.csv")
+    file_path = os.path.join(model_index.output_folder, "tau.csv")
     if not os.path.exists(file_path):
         print("需要先生成tau.csv")
     else:
@@ -69,7 +69,7 @@ def create_Nv_Te():
     其中键为v_ID,两字典的值分别为Nv和TE,两者索引分别为 Nv[v_ID] TE[v_ID]
     :return: Nv,TE
     """
-    file_path = os.path.join(data_generate.output_folder, "visitor.csv")
+    file_path = os.path.join(model_index.output_folder, "visitor.csv")
     if not os.path.exists(file_path):
         print("需要先生成visitor.csv")
     else:
@@ -90,7 +90,7 @@ def create_Pv_ts():
     从ts.csv生成字典变量PV和ts
     :return: 字典变量PV，ts；其中PV[v_ID]，ts[v_ID,p] (注意！ts中p不包含大门 0)
     """
-    file_path = os.path.join(data_generate.output_folder, "ts.csv")
+    file_path = os.path.join(model_index.output_folder, "ts.csv")
     if not os.path.exists(file_path):
         print("需要先生成ts.csv")
     else:
@@ -106,22 +106,22 @@ def create_Pv_ts():
         return gb.tupledict(Pv), gb.tupledict(ts)
 
 
-if not os.path.exists(data_generate.output_folder):
+if not os.path.exists(model_index.output_folder):
     print("需要先运行data_generate.py")
 else:
     """=============  代码主体  ==============="""
     '''集合的创建'''
     # 由枚举生成
-    V_ID = gb.tuplelist([x for x in range(1, data_generate.V_NUM + 1)])  # 编号：1-V_NUM
-    P = gb.tuplelist([x for x in range(0, data_generate.P_NUM + 1)])  # 编号：0-P_NUM *0代指g
-    B = gb.tuplelist([x for x in range(1, data_generate.B_NUM + 1)])  # 编号：1-B_NUM
+    V_ID = gb.tuplelist([x for x in range(1, model_index.V_NUM + 1)])  # 编号：1-V_NUM
+    P = gb.tuplelist([x for x in range(0, model_index.P_NUM + 1)])  # 编号：0-P_NUM *0代指g
+    B = gb.tuplelist([x for x in range(1, model_index.B_NUM + 1)])  # 编号：1-B_NUM
     # 由数据表生成
     arcs, tau = create_tau()  # arc[(i,j)] tau[i,j]
     Nv, Te = create_Nv_Te()  # Nv[v_ID] TE[v_ID]
     Pv, ts = create_Pv_ts()  # PV[v_ID] ts[v_ID,p] (p不包含大门 0)
     R = gb.tupledict()
-    for key in range(1, data_generate.B_NUM + 1):
-        R[key] = list(range(1, data_generate.R_MAX + 1))
+    for key in range(1, model_index.B_NUM + 1):
+        R[key] = list(range(1, model_index.R_MAX + 1))
 
     '''模型创建'''
     m = gb.Model("test1")
@@ -243,7 +243,7 @@ else:
         for b_i in B
     ), name="(18)")
     m.addConstrs((
-        (gb.quicksum(Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for v_i in V_ID) <= data_generate.Cb * y[i_i, j_i, b_i, r_i])
+        (gb.quicksum(Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for v_i in V_ID) <= model_index.Cb * y[i_i, j_i, b_i, r_i])
         for i_i in P for j_i in P for b_i in B for r_i in R[b_i]
     ), name="(19)")
     m.addConstrs((
@@ -295,7 +295,12 @@ else:
     ), name="(29)")
 
     m.addConstrs((
-        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i] >= 0) for v_i in V_ID for i_i in Pv[v_i]
+        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]
+         + M * (1 - gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])
+                                            for r_i in R[b_i]) for b_i in B))
+         + M * (1 - gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])
+                                            for r_i in R[b_i]) for b_i in B)) >= 0)
+        for v_i in V_ID for i_i in Pv[v_i]
     ), name="(30)")
 
     m.addConstrs((

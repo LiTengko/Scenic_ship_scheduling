@@ -23,29 +23,14 @@ import random
 from datetime import datetime, timedelta
 import numpy as np
 import os
+import model_index
 
-'''
-静态变量指定
-P_NUM 内部景点数
-V_NUM 游团数量
-B_NUM 游船数量
-Cb    游船载客量
-R_MAX 每船最大行程数
-'''
-P_NUM = 7  # 不可修改
-V_NUM = 5
-B_NUM = 3
-Cb = 20
-R_MAX = 10
 
-output_folder = "./data"
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
 
 def generate_time_slots(N):
     """
     入园时间生成
-    7-10，10-15，15-17的比例分别指定为0.6，0.3，0.1
+    7-10，10-15，15-16:30的比例分别指定为0.6，0.3，0.1
     :param N: the num of the list
     :return: list variable
     """
@@ -63,7 +48,7 @@ def generate_time_slots(N):
     second_slot_end = datetime.strptime("15:00", "%H:%M")
 
     third_slot_start = datetime.strptime("15:00", "%H:%M")
-    third_slot_end = datetime.strptime("17:00", "%H:%M")
+    third_slot_end = datetime.strptime("16:30", "%H:%M")
 
     for _ in range(first_slot_count):
         time_diff = (first_slot_end - first_slot_start).total_seconds() // 60
@@ -203,7 +188,7 @@ def ts_generate(csv_file):
         new_rows = []
         for index, row in data.iterrows():
             # 创建一个与景点数，所有元素初始化为-1
-            row_list = [-1] * P_NUM
+            row_list = [-1] * model_index.P_NUM
 
             # 读取"TE"列的数据
             time = row['TE']
@@ -221,7 +206,7 @@ def ts_generate(csv_file):
                 num_positions = 0
 
             # 随机选择列进行标记
-            positions = random.sample(range(P_NUM), num_positions)
+            positions = random.sample(range(model_index.P_NUM), num_positions)
             for position in positions:
                 row_list[position] = position + 1
 
@@ -240,7 +225,7 @@ def ts_generate(csv_file):
 
             new_rows.append(new_row)
         new_data = pd.concat(new_rows, ignore_index=True)
-        output_file = os.path.join(output_folder, "ts.csv")
+        output_file = os.path.join(model_index.output_folder, "ts.csv")
         new_data.to_csv(output_file, index=False)
     else:
         print("请检查是否已经生成visitor.csv")
@@ -258,30 +243,29 @@ def time_diff_in_minutes(time_str):
     return time_diff.seconds // 60
 
 # visitor 数据表生成
-visitor_num = generate_Nv(V_NUM)
-time_slots = generate_time_slots(V_NUM)
+visitor_num = generate_Nv(model_index.V_NUM)
+time_slots = generate_time_slots(model_index.V_NUM)
 visitor_dict = {
-    'ID': list(range(1, V_NUM+1)),
+    'ID': list(range(1, model_index.V_NUM+1)),
     'TE': time_slots,
     'NV': visitor_num,
 }
 visitor_data = pd.DataFrame(visitor_dict)
 # print(visitor_data.head())
-output_file = os.path.join(output_folder, "visitor.csv")
+output_file = os.path.join(model_index.output_folder, "visitor.csv")
 visitor_data.to_csv(output_file, index=False)
 
 
+'''数据生成，注释掉此部分以固定数据'''
 
 # tau 数据表生成
 # 包含有大门，因此最终矩阵规模为 P_NUM + 1
-tau_matrix = generate_tau_matrix(P_NUM + 1)
+tau_matrix = generate_tau_matrix(model_index.P_NUM + 1)
 # print(tau_matrix)
 tau_data = pd.DataFrame(tau_matrix)
 tau_data.columns = ['g', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
-output_file = os.path.join(output_folder, "tau.csv")
+output_file = os.path.join(model_index.output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
-
-
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
 # 替换TE为相距7:00的时间
