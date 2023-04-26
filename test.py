@@ -66,26 +66,29 @@ from gurobipy import GRB
 #
 # arcs, tau = create_tau()
 # print(tau[1, 7])
-def create_Pv_ts():
-    """
-    从ts.csv生成字典变量PV和ts
-    :return: 字典变量PV，ts；其中PV[v_ID]，ts[v_ID,p] (注意！ts中p不包含大门 0)
-    """
-    file_path = os.path.join(model_index.output_folder, "ts.csv")
-    if not os.path.exists(file_path):
-        print("需要先生成ts.csv")
-    else:
-        # 读取 CSV 文件
-        data = pd.read_csv(file_path)
-        # 根据给定的规则生成字典变量 PV
-        Pv = {}
-        ts = {}
-        for index, row in data.iterrows():
-            Pv[row['ID']] = [idx for idx, value in enumerate(row) if value > 5 and idx != 0]  # 跳过 ID 列
-            for i in range(1, 8):  # 从 1 到 7（包含）
-                ts[row['ID'], i] = row[i]
-        return gb.tupledict(Pv), gb.tupledict(ts)
+# def create_Pv_ts():
+#     """
+#     从ts.csv生成字典变量PV和ts
+#     :return: 字典变量PV，ts；其中PV[v_ID]，ts[v_ID,p] (注意！ts中p不包含大门 0)
+#     """
+#     file_path = os.path.join(model_index.output_folder, "ts.csv")
+#     if not os.path.exists(file_path):
+#         print("需要先生成ts.csv")
+#     else:
+#         # 读取 CSV 文件
+#         data = pd.read_csv(file_path)
+#         # 根据给定的规则生成字典变量 PV
+#         Pv = {}
+#         ts = {}
+#         for index, row in data.iterrows():
+#             Pv[row['ID']] = [idx for idx, value in enumerate(row) if value > 5 and idx != 0]  # 跳过 ID 列
+#             for i in range(1, 8):  # 从 1 到 7（包含）
+#                 ts[row['ID'], i] = row[i]
+#         return gb.tupledict(Pv), gb.tupledict(ts)
+#
+# Pv, ts = create_Pv_ts()  # PV[v_ID] ts[v_ID,p] (p不包含大门 0)
+#
+# print(Pv[1])
 
-Pv, ts = create_Pv_ts()  # PV[v_ID] ts[v_ID,p] (p不包含大门 0)
-
-print(Pv[1])
+import math
+print(math.ceil(1.1))

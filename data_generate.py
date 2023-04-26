@@ -18,6 +18,8 @@ and refer to the documentation for the method of generating data.
 """
 
 # import lib
+import math
+
 import pandas as pd
 import random
 from datetime import datetime, timedelta
@@ -184,12 +186,11 @@ def ts_generate(csv_file):
         # 将"TE"列转换为时间格式
         data['TE'] = pd.to_datetime(data['TE'], format="%H:%M")
 
-        new_data = pd.DataFrame(columns=['ID', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'])
         new_rows = []
+        v_id = 1
         for index, row in data.iterrows():
             # 创建一个与景点数，所有元素初始化为-1
             row_list = [-1] * model_index.P_NUM
-
             # 读取"TE"列的数据
             time = row['TE']
 
@@ -197,11 +198,11 @@ def ts_generate(csv_file):
             period = time_period(time)
 
             if period == 1:
-                num_positions = guss_int_generate(4, 7)
+                num_positions = guss_int_generate(math.ceil(model_index.P_NUM * 0.7), model_index.P_NUM)
             elif period == 2:
-                num_positions = guss_int_generate(2, 4)
+                num_positions = guss_int_generate(math.ceil(model_index.P_NUM * 0.5), math.ceil(model_index.P_NUM * 0.8))
             elif period == 3:
-                num_positions = guss_int_generate(1, 3)
+                num_positions = guss_int_generate(1, math.ceil(model_index.P_NUM * 0.3))
             else:
                 num_positions = 0
 
@@ -212,18 +213,10 @@ def ts_generate(csv_file):
 
             p_list = ts_select(row_list)
             # 添加新行到new_data DataFrame
-            new_row = pd.DataFrame({
-                'ID': [int(index) + 1],
-                'P1': [p_list[0]],
-                'P2': [p_list[1]],
-                'P3': [p_list[2]],
-                'P4': [p_list[3]],
-                'P5': [p_list[4]],
-                'P6': [p_list[5]],
-                'P7': [p_list[6]]
-            })
-
+            p_list.insert(0, v_id)
+            new_row = pd.DataFrame([p_list])
             new_rows.append(new_row)
+            v_id += 1
         new_data = pd.concat(new_rows, ignore_index=True)
         output_file = os.path.join(model_index.output_folder, "ts.csv")
         new_data.to_csv(output_file, index=False)
@@ -260,16 +253,15 @@ visitor_data.to_csv(output_file, index=False)
 
 '''数据生成，注释掉此部分以固定数据'''
 
-"""
+
 # tau 数据表生成
 # 包含有大门，因此最终矩阵规模为 P_NUM + 1
 tau_matrix = generate_tau_matrix(model_index.P_NUM + 1)
 # print(tau_matrix)
 tau_data = pd.DataFrame(tau_matrix)
-tau_data.columns = ['g', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']
 output_file = os.path.join(model_index.output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
-"""
+
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
 # 替换TE为相距7:00的时间

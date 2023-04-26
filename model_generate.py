@@ -34,7 +34,7 @@ M = 100000  # 大整数
 e = 1  # 小整数
 wait_MAX = 30  # 最长等船时间
 
-TE = 540  # 设置最晚入园时间为16:30,计算与7：00的差值为540 min  注意！设置TE时应小于游客入园时间TE
+TE = 570  # 设置最晚入园时间为16:30,计算与7：00的差值为570 min  注意！设置TE时应小于游客入园时间TE
 
 
 def create_tau():
@@ -100,9 +100,9 @@ def create_Pv_ts():
         Pv = {}
         ts = {}
         for index, row in data.iterrows():
-            Pv[row['ID']] = [idx for idx, value in enumerate(row) if value > 5 and idx != 0]  # 跳过 ID 列
-            for i in range(1, 8):  # 从 1 到 7（包含）
-                ts[row['ID'], i] = row[i]
+            Pv[row['0']] = [idx for idx, value in enumerate(row) if value > 5 and idx != 0]  # 跳过 ID 列
+            for i in range(1, model_index.P_NUM + 1):  # 从 1 到 P_NUM
+                ts[row['0'], i] = row[i]
         return gb.tupledict(Pv), gb.tupledict(ts)
 
 
