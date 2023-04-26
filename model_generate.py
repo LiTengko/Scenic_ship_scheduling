@@ -171,7 +171,9 @@ else:
         gb.quicksum(c4 * (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
-    wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
+    # 引入在船上等待得时间
+    wait_cost_2 = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] * (z_GD[v_i, j_i] - z_GA[v_i, i_i] - tau[i_i, j_i]) for i_i in Pv[v_i] + [0]) for j_i in Pv[v_i] + [0]) for r_i in R[b_i])for b_i in B) for v_i in V_ID)
+    wait_cost = wait_cost_2 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
     # 超时惩罚成本
     L_cost = gb.quicksum(gb.quicksum(c5 * L[v_i, i_i] * Nv[v_i] for i_i in Pv[v_i])for v_i in V_ID)  # (8)
     # 设定目标函数
