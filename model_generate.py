@@ -28,7 +28,7 @@ c1 = 3   # 票价系数c1
 c2 = 1   # 固定成本系数c2
 c3 = 2   # 行驶成本系数c3
 c4 = 3   # 等待成本系数c4
-c5 = 10  # 超时成本系数c5
+c5 = 20  # 超时成本系数c5
 
 M = 100000  # 大整数
 e = 1  # 小整数
@@ -99,7 +99,7 @@ def create_Pv_ts():
         Pv = {}
         ts = {}
         for index, row in data.iterrows():
-            Pv[row['ID']] = [idx for idx, value in enumerate(row) if value != -1 and idx != 0]  # 跳过 ID 列
+            Pv[row['ID']] = [idx for idx, value in enumerate(row) if value > 5 and idx != 0]  # 跳过 ID 列
             for i in range(1, 8):  # 从 1 到 7（包含）
                 ts[row['ID'], i] = row[i]
         return gb.tupledict(Pv), gb.tupledict(ts)
