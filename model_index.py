@@ -30,6 +30,7 @@ B_NUM = 4
 Cb = 20
 R_MAX = 10
 
+
 output_folder = "./data"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)

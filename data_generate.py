@@ -242,6 +242,8 @@ def time_diff_in_minutes(time_str):
     time_diff = current_time - base_time
     return time_diff.seconds // 60
 
+
+
 # visitor 数据表生成
 visitor_num = generate_Nv(model_index.V_NUM)
 time_slots = generate_time_slots(model_index.V_NUM)

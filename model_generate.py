@@ -32,6 +32,7 @@ c5 = 20  # 超时成本系数c5
 
 M = 100000  # 大整数
 e = 1  # 小整数
+wait_MAX = 30  # 最长等船时间
 
 TE = 540  # 设置最晚入园时间为16:30,计算与7：00的差值为540 min  注意！设置TE时应小于游客入园时间TE
 
@@ -172,13 +173,13 @@ else:
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
     # 引入在船上等待得时间
-    wait_cost_2 = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] * (z_GD[v_i, j_i] - z_GA[v_i, i_i] - tau[i_i, j_i]) for i_i in Pv[v_i] + [0]) for j_i in Pv[v_i] + [0]) for r_i in R[b_i])for b_i in B) for v_i in V_ID)
-    wait_cost = wait_cost_2 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
+    # wait_cost_2 = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] * (z_GD[v_i, j_i] - z_GA[v_i, i_i] - tau[i_i, j_i]) for i_i in Pv[v_i] + [0]) for j_i in Pv[v_i] + [0]) for r_i in R[b_i])for b_i in B) for v_i in V_ID)
+    wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
     # 超时惩罚成本
     L_cost = gb.quicksum(gb.quicksum(c5 * L[v_i, i_i] * Nv[v_i] for i_i in Pv[v_i])for v_i in V_ID)  # (8)
     # 设定目标函数
-    m.setObjective(price_1 - fix_cost - operate_cost - wait_cost - L_cost, GRB.MAXIMIZE)  # (9)
-    # m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
+    # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost - L_cost, GRB.MAXIMIZE)  # (9)
+    m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
 
     """设定约束"""
     m.addConstrs((
@@ -335,6 +336,11 @@ else:
              v_i, i_i] - M * (1 - L[v_i, j_i]))
         for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
     ), name="(36)")
+
+    # 加入对船上最长等待时间的限制
+    m.addConstrs((
+       (-M * (1 - x[v_i, i_i, j_i, b_i, r_i]) + z_GA[v_i, j_i] - z_GD[v_i, i_i] - tau[i_i, j_i] <= wait_MAX) for v_i in V_ID for j_i in Pv[v_i] + [0] for i_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i]
+    ), name="(37)")
 
     """求解和输出"""
     # # 写入数据
