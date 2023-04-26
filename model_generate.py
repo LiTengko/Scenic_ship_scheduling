@@ -28,7 +28,6 @@ c1 = 3   # 票价系数c1
 c2 = 1   # 固定成本系数c2
 c3 = 2   # 行驶成本系数c3
 c4 = 3   # 等待成本系数c4
-c5 = 20  # 超时成本系数c5
 
 M = 100000  # 大整数
 e = 1  # 小整数
@@ -162,24 +161,15 @@ else:
             for r_i in R[b_i])
         for b_i in B)  # (4)
     # 计算等待成本
-    """
-    行不通，使用车辆时间会发生越界
-    wait_cost_g = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum((c4 * (z_BS[r_i, b_i] * x[v_i, 0, i_i, b_i, r_i] - Te[v_i])) for r_i in R[b_i]) for b_i in B) for i_i in Pv[v_i]) for v_i in V_ID)
-    wait_cost_v = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum((c4 * (z_BS[r_i, b_i] * x[v_i, i_i, j_i, b_i, r_i] - z_GA[v_i, i_i] - ts[v_i, i_i])) for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in B)for i_i in Pv[v_i])for v_i in V_ID)
-    wait_cost = wait_cost_g + wait_cost_v  # (7)
-    """
     wait_cost_1 = gb.quicksum(
         gb.quicksum(c4 * (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
-    # 引入在船上等待得时间
-    # wait_cost_2 = gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] * (z_GD[v_i, j_i] - z_GA[v_i, i_i] - tau[i_i, j_i]) for i_i in Pv[v_i] + [0]) for j_i in Pv[v_i] + [0]) for r_i in R[b_i])for b_i in B) for v_i in V_ID)
     wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
-    # 超时惩罚成本
-    L_cost = gb.quicksum(gb.quicksum(c5 * L[v_i, i_i] * Nv[v_i] for i_i in Pv[v_i])for v_i in V_ID)  # (8)
+
     # 设定目标函数
-    # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost - L_cost, GRB.MAXIMIZE)  # (9)
-    m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
+    m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+    # m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
 
     """设定约束"""
     m.addConstrs((
@@ -188,46 +178,46 @@ else:
             B)
          + L[v_i, i_i] == 1)
         for v_i in V_ID for i_i in Pv[v_i] + [0]
-    ), name="(11)")
+    ), name="(10)")
 
     m.addConstrs((
         (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)
                      for i_i in Pv[v_i] + [0]) <= 1)
         for v_i in V_ID for j_i in Pv[v_i]
-    ), name="(12)")
+    ), name="(11)")
 
     m.addConstrs((
         gb.quicksum(
             gb.quicksum(gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1
         for v_i in V_ID
-    ), name="(13)")
+    ), name="(12)")
 
     m.addConstrs((
         (gb.quicksum(
             gb.quicksum(gb.quicksum(x[v_i, i_i, 0, b_i, r_i] for i_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1)
         for v_i in V_ID
-    ), name="(14)")
+    ), name="(13)")
 
     m.addConstrs((
         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= 1)
         for b_i in B for r_i in R[b_i]
-    ), name="(15)")
+    ), name="(14)")
 
     m.addConstrs((
         (gb.quicksum(y[i_i, i_i, b_i, r_i] for i_i in P) == 0)
         for b_i in B for r_i in R[b_i]
-    ), name="(16)")
+    ), name="(15)")
 
     m.addConstrs((
         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= gb.quicksum(
             gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P) for i_i in P))
         for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(17)")
+    ), name="(16)")
 
     m.addConstrs((
         (gb.quicksum(y[j_i, l_i, b_i, r_i] for l_i in P) <= gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for i_i in P))
         for b_i in B for r_i in R[b_i] if r_i >= 2 for j_i in P
-    ), name="(18)")
+    ), name="(17)")
 
     m.addConstrs((
         (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, l_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
@@ -235,7 +225,7 @@ else:
          gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
                      Pv[v_i] + [0]))
         for v_i in V_ID for j_i in Pv[v_i]
-    ), name="(19)")
+    ), name="(18)")
 
     m.addConstrs((
         (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, l_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
@@ -243,70 +233,75 @@ else:
          gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
                      Pv[v_i] + [0]))
         for v_i in V_ID for j_i in Pv[v_i]
-    ), name="(20)")
+    ), name="(19)")
 
     m.addConstrs((
         (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
          (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) - gb.quicksum(
              gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0 & i_i != j_i) for i_i in P if i_i != 0)))
         for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(21)")
+    ), name="(20)")
 
     m.addConstrs((
         (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P if j_i != 0) == gb.quicksum(
             gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P))
         for b_i in B
-    ), name="(22)")
+    ), name="(21)")
 
     m.addConstrs((
         (gb.quicksum(Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for v_i in V_ID) <= model_index.Cb * y[i_i, j_i, b_i, r_i])
         for i_i in P for j_i in P for b_i in B for r_i in R[b_i]
-    ), name="(23)")
+    ), name="(22)")
 
     m.addConstrs((
         (z_BF[r_i, b_i] == z_BS[r_i, b_i] + gb.quicksum(
             gb.quicksum(tau[i_i, j_i] * y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P))
         for b_i in B for r_i in R[b_i]
-    ), name="(24)")
+    ), name="(23)")
 
     m.addConstrs((
         (z_BS[r_i, b_i] >= z_BF[(r_i - 1), b_i])
         for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(25)")
+    ), name="(24)")
 
     m.addConstrs((
         (z_BS[r_i, b_i] >= z_GA[v_i, i_i] + ts[v_i, i_i] - M * (
                 1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(26)")
+    ), name="(25)")
 
     m.addConstrs((
         (z_BS[r_i, b_i] >= Te[v_i] - M * (1 - gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID
-    ), name="(27)")
+    ), name="(26)")
 
     m.addConstrs((
         (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i])
         for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(28)")
+    ), name="(27)")
 
     m.addConstrs((
         (-z_GA[v_i, i_i] + TE - e <= M * (1 - L[v_i, i_i]))
         for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(29)")
+    ), name="(28)")
 
     m.addConstrs((
         (z_GA[v_i, i_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(30)")
+    ), name="(29)")
 
     m.addConstrs((
         (z_GA[v_i, i_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(31)")
+    ), name="(30)")
 
     m.addConstrs((
         (z_GD[v_i, i_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
+        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
+    ), name="(31)")
+
+    m.addConstrs((
+        (z_GD[v_i, i_i] >= z_BS[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
         for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(32)")
 
@@ -336,11 +331,6 @@ else:
              v_i, i_i] - M * (1 - L[v_i, j_i]))
         for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
     ), name="(36)")
-
-    # 加入对船上最长等待时间的限制
-    m.addConstrs((
-       (-M * (1 - x[v_i, i_i, j_i, b_i, r_i]) + z_GA[v_i, j_i] - z_GD[v_i, i_i] - tau[i_i, j_i] <= wait_MAX) for v_i in V_ID for j_i in Pv[v_i] + [0] for i_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i]
-    ), name="(37)")
 
     """求解和输出"""
     # # 写入数据
