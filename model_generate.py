@@ -23,15 +23,14 @@ from gurobipy import GRB
 # 指定系数
 P_all_a = 80  # 一票制票价
 P_all_b = 50  # 两部制票价
-pm = gb.tupledict({1: 10, 2: 15, 3: 10, 4: 5, 5: 10, 6: 5, 7: 10})  # 两部制下各景点票价
+pm = gb.tupledict({1: 10, 2: 15, 3: 10, 4: 15, 5: 10, 6: 15, 7: 10})  # 两部制下各景点票价
 c1 = 3   # 票价系数c1
 c2 = 1   # 固定成本系数c2
 c3 = 2   # 行驶成本系数c3
-c4 = 3   # 等待成本系数c4
+c4 = 1   # 等待成本系数c4
 
 M = 100000  # 大整数
 e = 1  # 小整数
-wait_MAX = 30  # 最长等船时间
 
 TE = 570  # 设置最晚入园时间为16:30,计算与7：00的差值为570 min  注意！设置TE时应小于游客入园时间TE
 
@@ -168,8 +167,8 @@ else:
     wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
 
     # 设定目标函数
-    m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
-    # m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
+    # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+    m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
 
     """设定约束"""
     m.addConstrs((
@@ -334,15 +333,6 @@ else:
 
     """求解和输出"""
     # # 写入数据
-    m.write('./data/price_1_small.lp')
-    m.write('./data/price_1_small.MPS')
+    # m.write('./data/price_1_small.lp')
+    m.write('./data/price_2_small_c4_1.MPS')
 
-    # 设置最大求解时间为120min
-    m.Params.TimeLimit = 7200
-    # 设置gap为5%
-    m.Params.MIPGap = 0.05
-    m.optimize()
-    # 输出变量的解值
-    for v in m.getVars():
-        if (v.x - 0) != 0:
-            print(f"{v.varName}: {v.x}")

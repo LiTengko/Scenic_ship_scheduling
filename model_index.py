@@ -24,9 +24,9 @@ R_MAX 每船最大行程数
 # import lib
 import os
 
-P_NUM = 5
+P_NUM = 4
 V_NUM = 5
-B_NUM = 4
+B_NUM = 3
 Cb = 20
 R_MAX = 10
 

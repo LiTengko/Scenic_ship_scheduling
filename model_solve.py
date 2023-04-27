@@ -18,12 +18,15 @@ Feature description：
 import gurobipy as gp
 
 # 读取 MPS 文件并创建 Gurobi 模型对象
-model = gp.read("./data/price_1_small.MPS")
+model1 = gp.read("./data/price_1_small_c4_1.MPS")
+
 
 # 对模型进行求解
-model.optimize()
+model1.optimize()
+# 设置最大求解时间为120min
+model1.Params.TimeLimit = 7200
 
 # 输出变量的解值
-for v in model.getVars():
+for v in model1.getVars():
     if (v.x - 0) != 0:
         print(f"{v.varName}: {v.x}")

@@ -253,7 +253,7 @@ visitor_data.to_csv(output_file, index=False)
 
 '''数据生成，注释掉此部分以固定数据'''
 
-
+"""
 # tau 数据表生成
 # 包含有大门，因此最终矩阵规模为 P_NUM + 1
 tau_matrix = generate_tau_matrix(model_index.P_NUM + 1)
@@ -261,6 +261,7 @@ tau_matrix = generate_tau_matrix(model_index.P_NUM + 1)
 tau_data = pd.DataFrame(tau_matrix)
 output_file = os.path.join(model_index.output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
+
 
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
@@ -270,4 +271,6 @@ df = pd.read_csv('./data/visitor.csv')
 df['TE'] = df['TE'].apply(time_diff_in_minutes)
 # Save the modified dataframe to the same CSV file
 df.to_csv('./data/visitor.csv', index=False)
+
+"""
 

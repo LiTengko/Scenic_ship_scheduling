@@ -90,5 +90,24 @@ from gurobipy import GRB
 #
 # print(Pv[1])
 
-import math
-print(math.ceil(1.1))
+# import math
+# print(math.ceil(1.1))
+# _*_ coding:utf-8 _*_
+
+
+# import lib
+import gurobipy as gp
+
+# 读取 MPS 文件并创建 Gurobi 模型对象
+model2 = gp.read("./data/price_2_small_c4_1.MPS")
+
+
+# 对模型进行求解
+model2.optimize()
+# 设置最大求解时间为120min
+model2.Params.TimeLimit = 7200
+
+# 输出变量的解值
+for v in model2.getVars():
+    if (v.x - 0) != 0:
+        print(f"{v.varName}: {v.x}")
