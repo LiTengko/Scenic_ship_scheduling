@@ -20,11 +20,13 @@ import gurobipy as gp
 # 读取 MPS 文件并创建 Gurobi 模型对象
 model1 = gp.read("./data/price_1_small_c4_1.MPS")
 
-
-# 对模型进行求解
-model1.optimize()
 # 设置最大求解时间为120min
 model1.Params.TimeLimit = 7200
+model1.setParam('Heuristics', 1)
+model1.setParam('HeuristicsMode', 0)
+model1.setParam('HeuristicsFreq', 1000)
+# 对模型进行求解
+model1.optimize()
 
 # 输出变量的解值
 for v in model1.getVars():
