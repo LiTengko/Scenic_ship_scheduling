@@ -10,7 +10,7 @@
 -----------------------------------------------------
 Feature description：
 根据csv中的变量创建对应格式的变量
-并创建模型，添加变量
+使用gb创建目标函数，约束，生成对应模型
 """
 
 # import lib
@@ -20,19 +20,26 @@ import os
 import model_index
 from gurobipy import GRB
 
+# 指定需要生成的模型
+'''
+设置为1生成一票制模型
+设置为2生成两部制模型
+！！请不要设置为其他值
+'''
+Model = 1
+
 # 指定系数
-P_all_a = 80  # 一票制票价
-P_all_b = 50  # 两部制票价
-pm = gb.tupledict({1: 10, 2: 15, 3: 10, 4: 15, 5: 10, 6: 15, 7: 10})  # 两部制下各景点票价
-c1 = 3   # 票价系数c1
-c2 = 1   # 固定成本系数c2
-c3 = 2   # 行驶成本系数c3
-c4 = 1   # 等待成本系数c4
+P_all_a = model_index.P_all_a  # 一票制票价
+P_all_b = model_index.P_all_b  # 两部制票价
+pm = gb.tupledict(model_index.pm)  # 两部制下各景点票价
+c1 = model_index.c1   # 票价系数c1
+c2 = model_index.c2   # 固定成本系数c2
+c3 = model_index.c3   # 行驶成本系数c3
+c4 = model_index.c4   # 等待成本系数c4
+TE = model_index.TE   # 最晚入园时间
 
 M = 100000  # 大整数
 e = 1  # 小整数
-
-TE = 570  # 设置最晚入园时间为16:30,计算与7：00的差值为570 min  注意！设置TE时应小于游客入园时间TE
 
 
 def create_tau():
@@ -167,8 +174,12 @@ else:
     wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
 
     # 设定目标函数
-    # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
-    m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
+    if Model == 1:
+        m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+        print("目标函数为price_1")
+    else:
+        m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
+        print("目标函数为price_2")
 
     """设定约束"""
     m.addConstrs((
@@ -331,8 +342,11 @@ else:
         for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
     ), name="(36)")
 
-    """求解和输出"""
-    # # 写入数据
-    # m.write('./data/price_1_small.lp')
-    m.write('./data/price_2_small_c4_1.MPS')
+    """输出模型"""
+    if Model == 1:
+        m.write('./data/price_1_small_c4_1.MPS')
+        print("写入模型1")
+    else:
+        m.write('./data/price_2_small_c4_1.MPS')
+        print("写入模型2")
 
