@@ -16,19 +16,18 @@ Feature description：
 
 
 # import lib
-import pandas as pd
-import gurobipy as gb
-import os
-import model_index
-from gurobipy import GRB
-X = [
-    [ [1,0,0,0,0,0,0,0,0], [2,0,0,0,0,0,0,0,0], [3,0,0,0,0,0,0,0,0] ],
-    [ [1,1,0,0,0,0,0,0,0], [2,2,0,0,0,0,0,0,0], [3,3,0,0,0,0,0,0,0] ],
-    [ [1,0,0,0,0,0,0,0,0], [2,0,0,0,0,0,0,0,0], [3,0,0,0,0,0,0,0,0] ],
-]
-v_m = 2  # 筛选条件：元素第1位置等于 v_m
-res = [elem for lst in X for elem in lst if elem[0] == v_m and elem[1] == 0][0]
+import heuristics_model
 
-print(res)
+X = heuristics_model.initial_v_i_j()
+
+# print([lst for lst in X if lst[0] == 2 and lst[1] == 0][0][3])
+# print([lst for lst in X if lst[3] == 1 and lst[4] == -1][0])
+
+# v_m = 2  # 筛选条件：元素第1位置等于 v_m
+# res = [elem for lst in X for elem in lst if elem[0] == v_m and elem[1] == 0][0]
+
+Y = heuristics_model.initial_b_r_z(X)
+
+print(Y)
 
 
