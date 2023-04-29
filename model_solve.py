@@ -28,7 +28,7 @@ model2 = gp.read("./data/price_2_small_c4_1.MPS")
 def worker(model):
     # 设置模型参数
     # 设置最大求解时间
-    model.Params.TimeLimit = 60  # s
+    model.Params.TimeLimit = 7200  # s
     # 可设置迭代中使用启发式模式
     # model.setParam('Heuristics', 1)
     # model.setParam('HeuristicsMode', 0)

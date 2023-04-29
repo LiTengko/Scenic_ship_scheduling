@@ -21,4 +21,14 @@ import gurobipy as gb
 import os
 import model_index
 from gurobipy import GRB
+X = [
+    [ [1,0,0,0,0,0,0,0,0], [2,0,0,0,0,0,0,0,0], [3,0,0,0,0,0,0,0,0] ],
+    [ [1,1,0,0,0,0,0,0,0], [2,2,0,0,0,0,0,0,0], [3,3,0,0,0,0,0,0,0] ],
+    [ [1,0,0,0,0,0,0,0,0], [2,0,0,0,0,0,0,0,0], [3,0,0,0,0,0,0,0,0] ],
+]
+v_m = 2  # 筛选条件：元素第1位置等于 v_m
+res = [elem for lst in X for elem in lst if elem[0] == v_m and elem[1] == 0][0]
+
+print(res)
+
 
