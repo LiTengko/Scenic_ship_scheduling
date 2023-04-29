@@ -28,7 +28,6 @@ import os
 import model_index
 
 
-
 def generate_time_slots(N):
     """
     入园时间生成
