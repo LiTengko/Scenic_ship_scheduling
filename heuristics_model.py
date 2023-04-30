@@ -25,8 +25,6 @@ tau = data_read.create_tau()  # tau[i,j]
 Pv, ts = data_read.create_Pv_ts()  # Pv[v], ts[v, i]
 Nv, Te = data_read.create_Nv_Te()  # Nv[v], Te[v]
 
-B_max = 1  # 最大驳船数
-
 
 def prob(z_GD, z_BS):
     """
@@ -83,8 +81,8 @@ def initial_v_i_j():
 
 def initial_b_r_z(X):
     # 初始化
-    global B_max
-    r = 1  # 初始化行程
+    B_max = 1
+    r = 1
     while True:  # 该循环对 r 进行迭代
         # 以下是对 r = 1 初始
         if r == 1:
@@ -95,6 +93,26 @@ def initial_b_r_z(X):
                 select_list = list(range(1, model_index.V_NUM + 1))
                 random.shuffle(select_list)
                 for v_m in select_list:
+                    # 按照其时间决策是否要对其分配行程
+                    if random.random() < (1 - Te[v_m] / 600):
+                        # 对其分配行程
+                        pass
+                    else:
+                        # 不分配行程，找到该游团，对其进行标记
+                        for i_i in range(len(X)):
+                            trip = X[i_i]
+                            if trip[0] == v_m and trip[1] == 0:  # 选择v_m 从 0 出发的行程
+                                # 标记 b r
+                                trip[3] = 0
+                                trip[4] = 0
+                                # 计算时间
+                                z_GD = Te[v_m]  # 从 0 出发时间
+                                # 写入时间
+                                trip[5] = z_GD
+                                # 将数据写入
+                                X[i_i] = trip
+                        continue  # 后续不再对该团进行判断
+
                     # 判断是否超载, 超载终止，后面的团也不能载
                     if C + Nv[v_m] > model_index.Cb:
                         break
@@ -123,7 +141,8 @@ def initial_b_r_z(X):
                             X[i_i] = trip
                     elif [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] != -1:  # 如果 v_m 行程已经有安排(论不到该船)
                         pass
-                    elif flag_fist != 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1:  # v_m 已经不是第一程了，并且该行程没被安排
+                    elif flag_fist != 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][
+                        3] == -1:  # v_m 已经不是第一程了，并且该行程没被安排
                         # 找到(b,r)已有的行程参数
 
                         trip_1 = [lst for lst in X if lst[3] == b and lst[4] == r][0]
@@ -162,14 +181,14 @@ def initial_b_r_z(X):
                                 pass
 
                 v_not = trip_is_not_assigned(0, X)
-                # 如果 v_not 为空，即所有均已分配行程，则说明 r = 1已经全部分配，结束迭代
+                # 如果 v_not 为空，即所有均已分配行程或已经pass，则说明 r = 1已经全部分配，结束迭代
                 if len(v_not) == 0:
                     r = r + 1
                     B_max = b
                     break
                 else:
                     # 如果非空，设置有80%概率对b进行迭代，20%概率等待后面行程分配
-                    if random.random() < 1:
+                    if random.random() < 0.8:
                         b = b + 1
                     else:
                         r = r + 1
@@ -178,10 +197,18 @@ def initial_b_r_z(X):
 
         # 以下是对 r 的迭代
         else:
-            r = r + 1
-            break
+            # 判断解内是否还有行程没有分配的
+            if [lst for lst in X if lst[0] == 1 or lst[1] == 0][0][3] == -1:
+                r = r + 1
+                # 添加行程，对其进行分配
+                b_list = list(range(1, B_max + 1))
+                random.shuffle(b_list)
+                # 依次对(b,r)的行程进行判断和分配
+                for b_i in b_list:
+                    trip_r_1 = [lst for lst in X if lst[3] == b_i and lst[4] == r - 1][0]
 
+            else:
+                # 跳出，结束对 r 的迭代
+                break
 
-
-
-    return X
+    return B_max, r, X
