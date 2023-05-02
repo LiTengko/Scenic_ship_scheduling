@@ -79,59 +79,90 @@ def initial_v_i_j():
     return X
 
 
-def initial_b_r_z(X):
+def initial_b_r1_z(X):
     # 初始化
-    B_max = 1
     r = 1
-    while True:  # 该循环对 r 进行迭代
-        # 以下是对 r = 1 初始
-        if r == 1:
-            b = 1  # 初始化驳船数
-            while True:  # 该循环对 b 进行迭代
-                C = 0  # 初始化载客数
-                flag_fist = 0  # 标志其为该船第一个载的行程
-                select_list = list(range(1, model_index.V_NUM + 1))
-                random.shuffle(select_list)
-                for v_m in select_list:
-                    # 按照其时间决策是否要对其分配行程
-                    if random.random() < (1 - Te[v_m] / 600):
-                        # 对其分配行程
-                        pass
-                    else:
-                        # 不分配行程，找到该游团，对其进行标记
-                        for i_i in range(len(X)):
-                            trip = X[i_i]
-                            if trip[0] == v_m and trip[1] == 0:  # 选择v_m 从 0 出发的行程
-                                # 标记 b r
-                                trip[3] = 0
-                                trip[4] = 0
-                                # 计算时间
-                                z_GD = Te[v_m]  # 从 0 出发时间
-                                # 写入时间
-                                trip[5] = z_GD
-                                # 将数据写入
-                                X[i_i] = trip
-                        continue  # 后续不再对该团进行判断
+    b = 1
+    while True:  # 该循环对 b 进行迭代
+        C = 0  # 初始化载客数
+        flag_fist = 0  # 标志其为该船第一个载的行程
+        select_list = list(range(1, model_index.V_NUM + 1))
+        random.shuffle(select_list)
+        for v_m in select_list:
+            # 按照其时间决策是否要对其分配行程
+            if random.random() < (1 - Te[v_m] / 600):
+                # 对其分配行程
+                pass
+            else:
+                # 不分配行程，找到该游团，对其进行标记
+                for i_i in range(len(X)):
+                    trip = X[i_i]
+                    if trip[0] == v_m and trip[1] == 0:  # 选择v_m 从 0 出发的行程
+                        # 标记 b r
+                        trip[3] = 0
+                        trip[4] = 0
+                        # 计算时间
+                        z_GD = Te[v_m]  # 从 0 出发时间
+                        # 写入时间
+                        trip[5] = z_GD
+                        # 将数据写入
+                        X[i_i] = trip
+                continue  # 后续不再对该团进行判断
 
-                    # 判断是否超载, 超载终止，后面的团也不能载
-                    if C + Nv[v_m] > model_index.Cb:
-                        break
-                    # 如果没超载，执行后续
-                    if flag_fist == 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1:  # 如果 v_m 是第一个元素，且还未安排行程安排其上船
-                        flag_fist = 1
+            # 判断是否超载, 超载终止，后面的团也不能载
+            if C + Nv[v_m] > model_index.Cb:
+                break
+            # 如果没超载，执行后续
+            if flag_fist == 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1:  # 如果 v_m 是第一个元素，且还未安排行程安排其上船
+                flag_fist = 1
+                # 游客人数加入容量
+                C += Nv[v_m]
+                for i_i in range(len(X)):
+                    trip = X[i_i]
+                    if trip[0] == v_m and trip[1] == 0:  # 选择v_m 从 0 出发的行程
+                        # 标记 b r
+                        trip[3] = b
+                        trip[4] = r
+                        # 计算时间
+                        z_GD = Te[v_m]  # 从 0 出发时间
+                        z_BS = z_GD
+                        z_BF = z_BS + tau[0, trip[2]]
+                        z_GA = z_BF
+                        # 写入时间
+                        trip[5] = z_GD
+                        trip[6] = z_GA
+                        trip[7] = z_BS
+                        trip[8] = z_BF
+                    # 将数据写入
+                    X[i_i] = trip
+            elif [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] != -1:  # 如果 v_m 行程已经有安排(论不到该船)
+                pass
+            elif flag_fist != 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1:  # v_m 已经不是第一程了，并且该行程没被安排
+                # 找到(b,r)已有的行程参数
+                trip_1 = [lst for lst in X if lst[3] == b and lst[4] == r][0]
+                # 判断两者目的地是否相同
+                if ([lst for lst in X if lst[0] == v_m and lst[1] == 0][0][2] == trip_1[2]) and \
+                        ([lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1):  # j相同且没被选择过
+                    # 如果相同按概率判断是否上船
+                    z_GD = Te[v_m]
+                    z_BS = trip_1[7]  # 获得之前的z_BS
+                    if prob(z_GD, z_BS) == 1:  # 允许该团上船
                         # 游客人数加入容量
                         C += Nv[v_m]
+                        # 将出发时间统一为大者
+                        z_BS = max(z_BS, z_GD)
+                        z_GD = z_BS
+                        # 标记该团的时间
                         for i_i in range(len(X)):
                             trip = X[i_i]
-                            if trip[0] == v_m and trip[1] == 0:  # 选择v_m 从 0 出发的行程
+                            # 计算时间
+                            z_BF = z_BS + tau[0, trip[2]]
+                            z_GA = z_BF
+                            if trip[0] == v_m & trip[1] == 0:  # 选择v_m 从 0 出发的行程
                                 # 标记 b r
                                 trip[3] = b
                                 trip[4] = r
-                                # 计算时间
-                                z_GD = Te[v_m]  # 从 0 出发时间
-                                z_BS = z_GD
-                                z_BF = z_BS + tau[0, trip[2]]
-                                z_GA = z_BF
+                            if trip[3] == b & trip[4] == r:  # 选择所有的行程(b,r)
                                 # 写入时间
                                 trip[5] = z_GD
                                 trip[6] = z_GA
@@ -139,76 +170,21 @@ def initial_b_r_z(X):
                                 trip[8] = z_BF
                             # 将数据写入
                             X[i_i] = trip
-                    elif [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] != -1:  # 如果 v_m 行程已经有安排(论不到该船)
+
+                    else:  # 不允许该团上船
                         pass
-                    elif flag_fist != 0 and [lst for lst in X if lst[0] == v_m and lst[1] == 0][0][
-                        3] == -1:  # v_m 已经不是第一程了，并且该行程没被安排
-                        # 找到(b,r)已有的行程参数
 
-                        trip_1 = [lst for lst in X if lst[3] == b and lst[4] == r][0]
-                        # 判断两者目的地是否相同
-                        if ([lst for lst in X if lst[0] == v_m and lst[1] == 0][0][2] == trip_1[2]) and \
-                                ([lst for lst in X if lst[0] == v_m and lst[1] == 0][0][3] == -1):  # j相同且没被选择过
-                            # 如果相同按概率判断是否上船
-                            z_GD = Te[v_m]
-                            z_BS = trip_1[7]  # 获得之前的z_BS
-                            if prob(z_GD, z_BS) == 1:  # 允许该团上船
-                                # 游客人数加入容量
-                                C += Nv[v_m]
-                                # 将出发时间统一为大者
-                                z_BS = max(z_BS, z_GD)
-                                z_GD = z_BS
-                                # 标记该团的时间
-                                for i_i in range(len(X)):
-                                    trip = X[i_i]
-                                    # 计算时间
-                                    z_BF = z_BS + tau[0, trip[2]]
-                                    z_GA = z_BF
-                                    if trip[0] == v_m & trip[1] == 0:  # 选择v_m 从 0 出发的行程
-                                        # 标记 b r
-                                        trip[3] = b
-                                        trip[4] = r
-                                    if trip[3] == b & trip[4] == r:  # 选择所有的行程(b,r)
-                                        # 写入时间
-                                        trip[5] = z_GD
-                                        trip[6] = z_GA
-                                        trip[7] = z_BS
-                                        trip[8] = z_BF
-                                    # 将数据写入
-                                    X[i_i] = trip
-
-                            else:  # 不允许该团上船
-                                pass
-
-                v_not = trip_is_not_assigned(0, X)
-                # 如果 v_not 为空，即所有均已分配行程或已经pass，则说明 r = 1已经全部分配，结束迭代
-                if len(v_not) == 0:
-                    r = r + 1
-                    B_max = b
-                    break
-                else:
-                    # 如果非空，设置有80%概率对b进行迭代，20%概率等待后面行程分配
-                    if random.random() < 0.8:
-                        b = b + 1
-                    else:
-                        r = r + 1
-                        B_max = b
-                        break
-
-        # 以下是对 r 的迭代
+        v_not = trip_is_not_assigned(0, X)
+        # 如果 v_not 为空，即所有均已分配行程或已经pass，则说明 r = 1已经全部分配，结束迭代
+        if len(v_not) == 0:
+            B_max = b
+            break
         else:
-            # 判断解内是否还有行程没有分配的
-            if [lst for lst in X if lst[0] == 1 or lst[1] == 0][0][3] == -1:
-                r = r + 1
-                # 添加行程，对其进行分配
-                b_list = list(range(1, B_max + 1))
-                random.shuffle(b_list)
-                # 依次对(b,r)的行程进行判断和分配
-                for b_i in b_list:
-                    trip_r_1 = [lst for lst in X if lst[3] == b_i and lst[4] == r - 1][0]
-
+            # 如果非空，设置有80%概率对b进行迭代，20%概率等待后面行程分配
+            if random.random() < 0.8:
+                b = b + 1
             else:
-                # 跳出，结束对 r 的迭代
+                B_max = b
                 break
 
-    return B_max, r, X
+    return B_max, X

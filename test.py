@@ -26,8 +26,8 @@ X = heuristics_model.initial_v_i_j()
 # v_m = 2  # 筛选条件：元素第1位置等于 v_m
 # res = [elem for lst in X for elem in lst if elem[0] == v_m and elem[1] == 0][0]
 
-Y = heuristics_model.initial_b_r_z(X)
+B, Y = heuristics_model.initial_b_r1_z(X)
 
-print(Y)
+print(B, Y)
 
 
