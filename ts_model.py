@@ -193,11 +193,11 @@ def rough_value(X, type = None):
             # 判断是否要加入空程
             if add_flag == 1:
                 add_flag = 0
-                b_list = [b_num, 0, v_i, v_z_GD - tau[0, v_i], v_z_GD]  # [b_i, i, j, z^BS, z^BF]  此时视驳船出发为到达大门时间
+                b_list = [b_id, 0, v_i, v_z_GD - tau[0, v_i], v_z_GD]  # [b_i, i, j, z^BS, z^BF]  此时视驳船出发为到达大门时间
                 B.append(b_list)
             else:
                 if v_i != b_j:
-                    b_list = [b_num, 0, b_j, b_z_BF, b_z_BF + tau[v_i, b_j]]  # [b_i, i, j, z^BS, z^BF]
+                    b_list = [b_id, b_j, v_i, b_z_BF, b_z_BF + tau[v_i, b_j]]  # [b_i, i, j, z^BS, z^BF]
 
         # 驳船安排好后，考虑是否两者打包一起出游
 
@@ -212,12 +212,23 @@ def rough_value(X, type = None):
 
         else:
             # 没有同行的团，则仅考虑单独出行
-            wait_total += abs(B[b_id][4] + tau[b_j, v_i] - v_z_GD)
+            wait_total += abs(B[-1][4] + tau[b_j, v_i] - v_z_GD)  # 索引最后一个元素
             # 实际出发时间
-            v_z_GD = max(B[b_id][4] + tau[b_j, v_i], v_z_GD)
+            v_z_GD = max(B[-1][4] + tau[b_j, v_i], v_z_GD)
             # 实际到达时间
             v_z_GA = v_z_GD + tau[v_i, v_j]
-            # 如果船之前的目的地不为v_i, 则要对船添加新的行程
+            v_z_GD_next = v_z_GA + ts[v_index, v_j]
+            # 在写入之前加入对是否超时返回的判断
+
+            # 对该游团的行程进行写入
+            for index in range(len(x_tour)):
+                if x_tour[index][0] == v_index and x_tour[index][1] == v_i:
+                    x_tour[index][4] = v_z_GA
+                    x_tour[index][5] = 1
+                if x_tour[index][0] == v_index and x_tour[index][1] == v_j:
+                    x_tour[index][3] = v_z_GD_next
+            # 对驳船行程进行写入
+            B.append([b_id, v_i, v_j, v_z_GD, v_z_GA])
 
 
 
