@@ -20,6 +20,10 @@ import model_index
 import data_read
 import random
 import gurobipy as gb
+import numpy as np
+# 循环参数指定
+max_iterations = 20
+
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -114,10 +118,10 @@ def X_split(X):
 
 def rough_value(X, type = None):
     """
-    对环游的值进行粗略估计
+    基于贪婪思想对环游的值进行粗略估计
     :param X: 输入的游客环游集合
     :param type: 1，一票制；2，两部制
-    :return: 该环游对应的粗略值
+    :return: 该环游对应的粗略值，x_tour 对应的游览顺序和时间
     """
     # 首先对输入的所有环游进行拆分
     x_tour = X_split(X)  # x[v, i, j, z^GD, z^GA, r(-1 or 1)]
@@ -371,12 +375,98 @@ def rough_value(X, type = None):
         tour_cost += model_index.c3 * tau[b_ii[1], b_ii[2]]
     fix_cost = model_index.c2 * b_num
     if type == 1:
-        return model_index.c1 * N_total * model_index.P_all_a - (wait_cost + tour_cost + fix_cost)
+        return model_index.c1 * N_total * model_index.P_all_a - (wait_cost + tour_cost + fix_cost), x_tour
     elif type == 2:
         for x_ii in x_tour:
             if x_ii[2] != 0:
                 price_income += model_index.c1 * Nv[x_ii[0]] * model_index.pm[x_ii[2]]
-        return model_index.c1 * N_total * model_index.P_all_b + price_income - (wait_cost + tour_cost + fix_cost)
+        return model_index.c1 * N_total * model_index.P_all_b + price_income - (wait_cost + tour_cost + fix_cost), x_tour
+
+def near_x(X):
+    """
+    根据输入的游览顺序，随机选择一个游团，对其中相邻的两个景点进行交换
+    :param X:
+    :return: X_near,交换后得到的解; v,i,j 所选择交换的游团和进行交换的两个景点
+    """
+    v_selected = random.choice(list(X.keys()))
+    x_tour = X[v_selected]
+    if len(x_tour) > 3:
+        idx = random.randint(1, len(x_tour) - 3)  # 生成一个不是首位位置的随机索引
+        x_tour[idx], x_tour[idx + 1] = x_tour[idx + 1], x_tour[idx]  # 交换相邻的两个变量
+        X[v_selected] = x_tour
+        return X, v_selected, x_tour[idx], x_tour[idx + 1]
+    else:
+        # 如果只有三个元素，不做交换，返回中间元素
+        return X, v_selected, x_tour[1], x_tour[1]
+
+
+def Ts_optimize(X, type = None):
+    # 初始化参数设置
+    tabu_length = 10  # 禁忌列表长度
+    tabu_list = np.zeros((model_index.V_NUM + 1, model_index.P_NUM + 1,  model_index.P_NUM + 1))  # 禁忌列表
+    current_solution = X  # 当前解
+    current_fitness = rough_value(X, type=type)  # 当前解的评价
+    neighbor_fitness = 0  # 邻域解的评价
+    # 当前解的邻域
+    neighborhood = []
+
+    # 最佳解
+    best_solution = current_solution.copy()
+    best_fitness = current_fitness
+
+    # 主循环
+    for i in range(max_iterations):
+        print(f"Iteration {i}, Best fitness = {best_fitness}")
+
+        # 新建一个空的候选邻居解列表
+        candidate_neighbors = []
+
+        # 交换得到邻域解
+        X_near, v_selected, p_i, p_j = near_x(X)
+
+        # 计算邻域解的值
+        value = rough_value(X, type=type)
+        # 如果这个邻域解不在禁忌列表中，或者虽然存在但距离更小，就将它加入候选邻居列表
+        if ((tabu_list[v_selected, p_i, p_j] == 0) or (value > current_fitness)) and (value > best_fitness):
+            tabu_list[v_selected, p_i, p_j] = tabu_length
+            candidate_neighbors.append((X_near, value))
+
+        # 如果没有候选邻居解，说明已经搜索到最优解或者无法再优化了
+        if len(candidate_neighbors) == 0:
+            print("No more neighbors, Local Optimum Reached!")
+            break
+
+        # 从候选邻居解中选择下一个解，以期望值选择最小的解作为下一步解
+        max_value = max(candidate_neighbors, key=lambda x: x[1])[1]  # 找到candidate_neighbors中value最小的值min_value
+        index = [i for i, j in enumerate(candidate_neighbors) if j[1] == max_value]  # 找到所有value等于min_value的索引值
+        next_solution = candidate_neighbors[index[0]][0]
+        neighbor_fitness = candidate_neighbors[index[0]][1]
+
+        # 如果当前解的距离是最优的，则更新最优解
+        if neighbor_fitness < best_fitness:
+            best_solution = next_solution.copy()
+            best_fitness = neighbor_fitness
+
+        # 更新禁忌列表，将所有禁忌列表中的元素的值减1，并移除所有倒计时到0的元素
+        for i in range(tabu_list.shape[0]):
+            for j in range(tabu_list.shape[1]):
+                for k in range(tabu_list.shape[2]):
+                    if tabu_list[i, j, k] > 0:
+                        tabu_list[i, j, k] -= 1
+                        if tabu_list[i, j, k] == 0:
+                            tabu_list[j, i, k] = 0
+
+        # 将当前解设置为选择的下一步解，继续进行下一次迭代
+        current_solution = next_solution.copy()
+        current_fitness = neighbor_fitness
+
+
+
+    return best_solution, best_fitness
+
+
+
+
 
 
 
@@ -385,11 +475,20 @@ def rough_value(X, type = None):
 X = {}
 for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
-
 print(X)
+
+best_solution, best_fitness = Ts_optimize(X,type=2)
+
+
+# X, v, i, j = near_x(X)
+# print(X)
+# print([v, i, j])
+
+
 # x_tour = X_split(X)
 # print(x_tour)
 
-cost = rough_value(X, type=2)
 
-print(cost)
+# x_tour, cost = rough_value(X, type=1)
+# print(cost)
+# print(x_tour)
