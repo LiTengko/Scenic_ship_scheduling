@@ -425,8 +425,8 @@ def Ts_optimize(X, type=None):
         X_near, v_selected, p_i, p_j = near_x(X)
 
         # 计算邻域解的值
-        value = rough_value(X, type=type)
-        # 如果这个邻域解不在禁忌列表中，或者虽然存在但距离更小，就将它加入候选邻居列表
+        value = rough_value(X_near, type=type)
+        # 如果这个邻域解不在禁忌列表中，或者虽然存在但权值更大，就将它加入候选邻居列表
         if ((tabu_list[v_selected, p_i, p_j] == 0) or (value > current_fitness)) and (value > best_fitness):
             tabu_list[v_selected, p_i, p_j] = tabu_length
             candidate_neighbors.append((X_near, value))
@@ -478,7 +478,7 @@ for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
 #
-# best_solution, best_fitness = Ts_optimize(X, type=1)
+best_solution, best_fitness = Ts_optimize(X, type=2)
 
 
 # X, v, i, j = near_x(X)

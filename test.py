@@ -1,323 +1,73 @@
-# _*_ coding:utf-8 _*_
-"""
-@File     : test.py
-@Project  : MIP_solver
-@Time     : 2023/4/13 13:40
-@Author   : Li D.K
-@Contact  : lidengke@zju.edu.cn
-@Software : PyCharm
-@License  : (C)Copyright 2022 SRTP
-@Modify Time      @Author    @Version    @Description
-------------      -------    --------    -----------
-2023/4/13 13:40   Li D.K.      1.0         None
------------------------------------------------------
-Feature description：
-"""
+import numpy as np
+import random
+import copy
 
+# 生成距离矩阵
+distances = np.array([
+    [0, 10, 20, 30, 40],
+    [10, 0, 15, 25, 35],
+    [20, 15, 0, 10, 20],
+    [30, 25, 10, 0, 10],
+    [40, 35, 20, 10, 0]
+])
 
-# import lib
-# import lib
-import gurobipy as gb
-import os
-import model_index
-from gurobipy import GRB
-import data_read
-import ts_model
+n_cities = len(distances)
+max_iterations = 1000
+tabu_list_size = 20
+freq_weight = 0.1  # 频率信息权重
 
+# 计算路径长度
+def path_length(path, distances):
+    length = 0
+    for i in range(len(path) - 1):
+        length += distances[path[i]][path[i + 1]]
+    length += distances[path[-1]][path[0]]
+    return length
 
-# 指定需要生成的模型
-'''
-设置为1生成一票制模型
-设置为2生成两部制模型
-！！请不要设置为其他值
-'''
-Model = 2
+# 生成初始解
+current_path = list(range(n_cities))
+random.shuffle(current_path)
+best_path = copy.deepcopy(current_path)
 
-# 指定系数
-P_all_a = model_index.P_all_a  # 一票制票价
-P_all_b = model_index.P_all_b  # 两部制票价
-pm = gb.tupledict(model_index.pm)  # 两部制下各景点票价
-c1 = model_index.c1   # 票价系数c1
-c2 = model_index.c2   # 固定成本系数c2
-c3 = model_index.c3   # 行驶成本系数c3
-c4 = model_index.c4   # 等待成本系数c4
-TE = model_index.TE   # 最晚入园时间
+# 初始化禁忌表
+tabu_list = []
 
-M = 100000  # 大整数
-e = 1  # 小整数
+# 初始化边使用频率矩阵
+edge_frequency = np.zeros((n_cities, n_cities))
 
-if not os.path.exists(model_index.output_folder):
-    print("需要先运行data_generate.py")
-else:
-    """=============  代码主体  ==============="""
-    '''集合的创建'''
-    # 读取生成的环游集合
-    X = {}
-    for v_i in range(1, model_index.V_NUM + 1):
-        X[v_i] = ts_model.TSP_optimize(v_i)
-    # 由枚举生成
-    V_ID = gb.tuplelist([x for x in range(1, model_index.V_NUM + 1)])  # 编号：1-V_NUM
-    P = gb.tuplelist([x for x in range(0, model_index.P_NUM + 1)])  # 编号：0-P_NUM *0代指g
-    B = gb.tuplelist([x for x in range(1, model_index.B_NUM + 1)])  # 编号：1-B_NUM
-    # 由数据表生成
-    arcs, tau = gb.multidict(data_read.create_tau())  # arc[(i,j)] tau[i,j]
+for iteration in range(max_iterations):
+    # 邻域搜索
+    candidates = []
+    for i in range(1, n_cities - 1):
+        for j in range(i + 1, n_cities):
+            new_path = copy.deepcopy(current_path)
+            new_path[i], new_path[j] = new_path[j], new_path[i]
+            candidates.append((i, j, new_path))
 
-    Nv, Te = data_read.create_Nv_Te()  # Nv[v_ID] TE[v_ID]
-    Nv = gb.tupledict(Nv)
-    Te = gb.tupledict(Te)
+    # 更新边使用频率
+    for i in range(n_cities - 1):
+        edge_frequency[current_path[i]][current_path[i + 1]] += 1
+        edge_frequency[current_path[i + 1]][current_path[i]] += 1
+    edge_frequency[current_path[-1]][current_path[0]] += 1
+    edge_frequency[current_path[0]][current_path[-1]] += 1
 
-    Pv, ts = data_read.create_Pv_ts()  # PV[v_ID] ts[v_ID,p] (p不包含大门 0)
-    Pv = gb.tupledict(Pv)
-    ts = gb.tupledict(ts)
+    # 按照路径长度和边使用频率排序候选解
+    candidates.sort(key=lambda x: path_length(x[2], distances) + freq_weight * edge_frequency[x[2][x[0]]][x[2][x[1]]])
 
-    R = gb.tupledict()
-    for key in range(1, model_index.B_NUM + 1):
-        R[key] = list(range(1, model_index.R_MAX + 1))
+    # 选择非禁忌的最优解，或者在特殊条件下选择禁忌解
+    for i, j, new_path in candidates:
+        if (i, j) not in tabu_list:
+            current_path = new_path
+            tabu_list.append((i, j))
+            break
 
-    '''模型创建'''
-    m = gb.Model("test1")
+    # 更新最优解
+    if path_length(current_path, distances) < path_length(best_path, distances):
+        best_path = copy.deepcopy(current_path)
 
-    '''决策变量'''
-    # 0-1 变量
-    x = m.addVars(V_ID, arcs, B, R[1], vtype=GRB.BINARY, name="x")  # x_vijbr (36)
-    y = m.addVars(arcs, B, R[1], vtype=GRB.BINARY, name="y")  # y_ijbr (37)
-    L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi (38)
-    # 时间整型变量
-    z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_vi
-    z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_vi
-    z_BF = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
-    z_BS = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
+    # 禁忌表溢出策略
+    if len(tabu_list) > tabu_list_size:
+        tabu_list.pop(0)
 
-    """目标函数"""
-    # 一票制票价
-    price_1 = gb.quicksum(P_all_a * c1 * Nv[v_i] for v_i in V_ID)  # (1)
-    # 两部制票价
-    p_separate = gb.quicksum(
-        gb.quicksum(
-            gb.quicksum(
-                gb.quicksum(
-                    gb.quicksum(c1 * pm[j_i] * Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i])
-                    for i_i in Pv[v_i] + [0])
-                for r_i in R[b_i])
-            for b_i in B)
-        for v_i in V_ID)
-    price_2 = p_separate + gb.quicksum(P_all_b * c1 * Nv[v_i] for v_i in V_ID)  # (2)
-    # 固定成本
-    fix_cost = gb.quicksum(gb.quicksum(c2 * y[0, j_i, b_i, 1] for j_i in P if j_i != 0) for b_i in B)  # (3)
-    # 运营成本
-    operate_cost = gb.quicksum(
-        gb.quicksum(
-            gb.quicksum(
-                gb.quicksum(c3 * tau[i_i, j_i] * y[i_i, j_i, b_i, r_i]
-                            for j_i in P) for i_i in P)
-            for r_i in R[b_i])
-        for b_i in B)  # (4)
-    # 计算等待成本
-    wait_cost_1 = gb.quicksum(
-        gb.quicksum(c4 * (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]) * (1 - L[v_i, i_i])
-                    for i_i in Pv[v_i])
-        for v_i in V_ID)  # (6)
-    wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
-
-    # 设定目标函数
-    if Model == 1:
-        m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
-        print("目标函数为price_1")
-    else:
-        m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
-        print("目标函数为price_2")
-
-    """设定约束"""
-    # m.addConstrs((
-    #     (gb.quicksum(
-    #         gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in
-    #         B)
-    #      + L[v_i, i_i] == 1)
-    #     for v_i in V_ID for i_i in Pv[v_i] + [0]
-    # ), name="(10)")
-    for v_i in V_ID:
-        for i_i in Pv[v_i] + [0]:
-            for j_i in Pv[v_i] + [0]:
-                if j_i != i_i:
-                    x_tour = X[v_i]
-                    for index in range(len(x_tour) - 1):
-                        if (x_tour[index] == i_i and x_tour[index + 1] == j_i):
-                            m.addConstrs((
-                                gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) + L[v_i, i_i] == 1
-                            ), name="(10)")
-                        else:
-                            m.addConstrs((
-                                    gb.quicksum(
-                                        gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) == 0
-                            ), name="(10)")
-
-
-
-
-
-
-
-    # m.addConstrs((
-    #     (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)
-    #                  for i_i in Pv[v_i] + [0]) <= 1)
-    #     for v_i in V_ID for j_i in Pv[v_i]
-    # ), name="(11)")
-
-    # m.addConstrs((
-    #     gb.quicksum(
-    #         gb.quicksum(gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1
-    #     for v_i in V_ID
-    # ), name="(12)")
-
-    # m.addConstrs((
-    #     (gb.quicksum(
-    #         gb.quicksum(gb.quicksum(x[v_i, i_i, 0, b_i, r_i] for i_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1)
-    #     for v_i in V_ID
-    # ), name="(13)")
-
-    # 添加强制性约束
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= 1)
-        for b_i in B for r_i in R[b_i]
-    ), name="(14)")
-
-    m.addConstrs((
-        (gb.quicksum(y[i_i, i_i, b_i, r_i] for i_i in P) == 0)
-        for b_i in B for r_i in R[b_i]
-    ), name="(15)")
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P) <= gb.quicksum(
-            gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P) for i_i in P))
-        for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(16)")
-
-    m.addConstrs((
-        (gb.quicksum(y[j_i, l_i, b_i, r_i] for l_i in P) <= gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for i_i in P))
-        for b_i in B for r_i in R[b_i] if r_i >= 2 for j_i in P
-    ), name="(17)")
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, l_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
-                     Pv[v_i] + [0]) <=
-         gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
-                     Pv[v_i] + [0]))
-        for v_i in V_ID for j_i in Pv[v_i]
-    ), name="(18)")
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, l_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for l_i in
-                     Pv[v_i] + [0]) <=
-         gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for r_i in R[b_i]) for b_i in B) for i_i in
-                     Pv[v_i] + [0]))
-        for v_i in V_ID for j_i in Pv[v_i]
-    ), name="(19)")
-
-    m.addConstrs((
-        (gb.quicksum(y[i_i, 0, b_i, r_i] for i_i in P if i_i != 0) >=
-         (gb.quicksum(gb.quicksum(y[i_i, j_i, b_i, (r_i - 1)] for j_i in P if j_i != 0) for i_i in P) - gb.quicksum(
-             gb.quicksum(y[i_i, j_i, b_i, r_i] for j_i in P if j_i != 0 & i_i != j_i) for i_i in P if i_i != 0)))
-        for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(20)")
-
-    m.addConstrs((
-        (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P if j_i != 0) == gb.quicksum(
-            gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P))
-        for b_i in B
-    ), name="(21)")
-
-    m.addConstrs((
-        (gb.quicksum(Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for v_i in V_ID) <= model_index.Cb * y[i_i, j_i, b_i, r_i])
-        for i_i in P for j_i in P for b_i in B for r_i in R[b_i]
-    ), name="(22)")
-
-    m.addConstrs((
-        (z_BF[r_i, b_i] == z_BS[r_i, b_i] + gb.quicksum(
-            gb.quicksum(tau[i_i, j_i] * y[i_i, j_i, b_i, r_i] for j_i in P) for i_i in P))
-        for b_i in B for r_i in R[b_i]
-    ), name="(23)")
-
-    m.addConstrs((
-        (z_BS[r_i, b_i] >= z_BF[(r_i - 1), b_i])
-        for b_i in B for r_i in R[b_i] if r_i >= 2
-    ), name="(24)")
-
-    m.addConstrs((
-        (z_BS[r_i, b_i] >= z_GA[v_i, i_i] + ts[v_i, i_i] - M * (
-                1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(25)")
-
-    m.addConstrs((
-        (z_BS[r_i, b_i] >= Te[v_i] - M * (1 - gb.quicksum(x[v_i, 0, j_i, b_i, r_i] for j_i in Pv[v_i])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID
-    ), name="(26)")
-
-    m.addConstrs((
-        (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i])
-        for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(27)")
-
-    m.addConstrs((
-        (-z_GA[v_i, i_i] + TE - e <= M * (1 - L[v_i, i_i]))
-        for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(28)")
-
-    m.addConstrs((
-        (z_GA[v_i, i_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(29)")
-
-    m.addConstrs((
-        (z_GA[v_i, i_i] <= z_BF[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(30)")
-
-    m.addConstrs((
-        (z_GD[v_i, i_i] <= z_BS[r_i, b_i] + M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
-    ), name="(31)")
-
-    m.addConstrs((
-        (z_GD[v_i, i_i] >= z_BS[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
-        for b_i in B for r_i in R[b_i] for v_i in V_ID for i_i in Pv[v_i] + [0]
-    ), name="(32)")
-
-    m.addConstrs((
-        (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]
-         + M * (1 - gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0])
-                                            for r_i in R[b_i]) for b_i in B))
-         + M * (1 - gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])
-                                            for r_i in R[b_i]) for b_i in B)) >= 0)
-        for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(33)")
-
-    m.addConstrs((
-        (z_GD[v_i, 0] - Te[v_i] >= 0) for v_i in V_ID
-    ), name="(34)")
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) <= 1 + M * (
-                1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) + M * L[
-             v_i, i_i] + M * (1 - L[v_i, j_i]))
-        for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
-    ), name="(35)")
-
-    m.addConstrs((
-        (gb.quicksum(gb.quicksum(x[v_i, j_i, 0, b_i, r_i] for r_i in R[b_i]) for b_i in B) >= 1 - M * (
-                1 - gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)) - M * L[
-             v_i, i_i] - M * (1 - L[v_i, j_i]))
-        for v_i in V_ID for i_i in Pv[v_i] for j_i in Pv[v_i]
-    ), name="(36)")
-
-    """输出模型"""
-    if Model == 1:
-        m.write('./data/price_1_small_c4_1.MPS')
-        print("写入模型1")
-    else:
-        m.write('./data/price_2_small_c4_1.MPS')
-        print("写入模型2")
-
-
-
+print("Best path:", best_path)
+print("Best path length:", path_length(best_path, distances))
