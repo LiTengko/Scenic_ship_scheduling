@@ -22,8 +22,8 @@ import random
 import gurobipy as gb
 import numpy as np
 # 循环参数指定
-max_iterations = 20
-
+max_iterations = 80  # 最大迭代次数
+tabu_length = 10  # 禁忌列表长度
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -66,9 +66,10 @@ def TSP_optimize(v_id):
                 if i != j:
                     m.addConstr(x[i, j] + x[j, i] <= 1)
 
-        for i in Pv[v_id]:
-            m.addConstr(gb.quicksum(x[i, j] for j in Pv[v_id] + [0] if j != i) +
-                        gb.quicksum(x[j, i] for j in Pv[v_id] + [0] if j != i) == 2)
+        # for i in Pv[v_id]:
+        #     m.addConstr(gb.quicksum(x[i, j] for j in Pv[v_id] + [0] if j != i) +
+        #                 gb.quicksum(x[j, i] for j in Pv[v_id] + [0] if j != i) == 2)
+
         # 游团从0出发
         m.addConstr(gb.quicksum(x[0, j] for j in Pv[v_id]) == 1)
 
@@ -400,9 +401,8 @@ def near_x(X):
         return X, v_selected, x_tour[1], x_tour[1]
 
 
-def Ts_optimize(X, type = None):
+def Ts_optimize(X, type=None):
     # 初始化参数设置
-    tabu_length = 10  # 禁忌列表长度
     tabu_list = np.zeros((model_index.V_NUM + 1, model_index.P_NUM + 1,  model_index.P_NUM + 1))  # 禁忌列表
     current_solution = X  # 当前解
     current_fitness = rough_value(X, type=type)  # 当前解的评价
@@ -416,7 +416,7 @@ def Ts_optimize(X, type = None):
 
     # 主循环
     for i in range(max_iterations):
-        print(f"Iteration {i}, Best fitness = {best_fitness}")
+        print(f"Iteration {i + 1}, Best fitness = {best_fitness}")
 
         # 新建一个空的候选邻居解列表
         candidate_neighbors = []
@@ -433,8 +433,9 @@ def Ts_optimize(X, type = None):
 
         # 如果没有候选邻居解，说明已经搜索到最优解或者无法再优化了
         if len(candidate_neighbors) == 0:
-            print("No more neighbors, Local Optimum Reached!")
-            break
+            continue
+        else:
+            print(candidate_neighbors)
 
         # 从候选邻居解中选择下一个解，以期望值选择最小的解作为下一步解
         max_value = max(candidate_neighbors, key=lambda x: x[1])[1]  # 找到candidate_neighbors中value最小的值min_value
@@ -443,18 +444,18 @@ def Ts_optimize(X, type = None):
         neighbor_fitness = candidate_neighbors[index[0]][1]
 
         # 如果当前解的距离是最优的，则更新最优解
-        if neighbor_fitness < best_fitness:
+        if neighbor_fitness > best_fitness:
             best_solution = next_solution.copy()
             best_fitness = neighbor_fitness
 
         # 更新禁忌列表，将所有禁忌列表中的元素的值减1，并移除所有倒计时到0的元素
-        for i in range(tabu_list.shape[0]):
-            for j in range(tabu_list.shape[1]):
-                for k in range(tabu_list.shape[2]):
-                    if tabu_list[i, j, k] > 0:
-                        tabu_list[i, j, k] -= 1
-                        if tabu_list[i, j, k] == 0:
-                            tabu_list[j, i, k] = 0
+        for i_i in range(tabu_list.shape[0]):
+            for j_i in range(tabu_list.shape[1]):
+                for k_i in range(tabu_list.shape[2]):
+                    if tabu_list[i_i, j_i, k_i] > 0:
+                        tabu_list[i_i, j_i, k_i] -= 1
+                        if tabu_list[i_i, j_i, k_i] == 0:
+                            tabu_list[i_i, k_i, j_i] = 0
 
         # 将当前解设置为选择的下一步解，继续进行下一次迭代
         current_solution = next_solution.copy()
@@ -476,8 +477,8 @@ X = {}
 for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
-
-best_solution, best_fitness = Ts_optimize(X,type=2)
+#
+# best_solution, best_fitness = Ts_optimize(X, type=1)
 
 
 # X, v, i, j = near_x(X)
