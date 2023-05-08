@@ -23,7 +23,7 @@ import gurobipy as gb
 import numpy as np
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
-tabu_length = 15  # 禁忌列表长度
+tabu_length = 20  # 禁忌列表长度
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
