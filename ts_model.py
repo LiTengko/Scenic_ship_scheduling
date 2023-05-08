@@ -22,8 +22,8 @@ import random
 import gurobipy as gb
 import numpy as np
 # 循环参数指定
-max_iterations = 80  # 最大迭代次数
-tabu_length = 10  # 禁忌列表长度
+max_iterations = 8000  # 最大迭代次数
+tabu_length = 15  # 禁忌列表长度
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -239,7 +239,6 @@ def rough_value(X, type = None):
                         C = C_temp
             # sorted_same_trip 前 index 同行
             if same_index == 0:
-                # 没有同行的团，仅考虑单独出行
                 # 没有同行的团，则仅考虑单独出行
                 wait_total += abs(B[-1][4] + tau[b_j, v_i] - v_z_GD)  # 索引最后一个元素
                 # 实际出发时间
@@ -422,7 +421,7 @@ def Ts_optimize(X, type=None):
         candidate_neighbors = []
 
         # 交换得到邻域解
-        X_near, v_selected, p_i, p_j = near_x(X)
+        X_near, v_selected, p_i, p_j = near_x(current_solution)
 
         # 计算邻域解的值
         value = rough_value(X_near, type=type)
@@ -478,7 +477,7 @@ for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
 #
-best_solution, best_fitness = Ts_optimize(X, type=2)
+best_solution, best_fitness = Ts_optimize(X, type=1)
 
 
 # X, v, i, j = near_x(X)
