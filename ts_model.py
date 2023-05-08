@@ -477,7 +477,7 @@ for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
 #
-best_solution, best_fitness = Ts_optimize(X, type=1)
+best_solution, best_fitness = Ts_optimize(X, type=2)
 
 
 # X, v, i, j = near_x(X)
