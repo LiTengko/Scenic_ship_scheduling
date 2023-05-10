@@ -22,7 +22,7 @@ import random
 import gurobipy as gb
 import numpy as np
 # 循环参数指定
-max_iterations = 8000  # 最大迭代次数
+max_iterations = 1000  # 最大迭代次数
 tabu_length = 20  # 禁忌列表长度
 
 # 读取数据表中的信息
@@ -107,10 +107,16 @@ def X_split(X):
             visit_list.append(value[i])  # i
             visit_list.append(value[i + 1])  # j
             if i == 0:
-                visit_list.append(Te[key])  # z^GD
+                z_GD_temp = Te[key]
+                z_GA_temp = Te[key] + tau[visit_list[1], visit_list[2]]
+                visit_list.append(z_GD_temp)  # z^GD
+                visit_list.append(z_GA_temp)  # z^GA
             else:
-                visit_list.append(-1)
-            visit_list.append(-1)  # z^GA
+                z_GD_temp = z_GA_temp + ts[visit_list[0], visit_list[1]]
+                z_GA_temp = z_GA_temp + tau[visit_list[1], visit_list[2]]
+                visit_list.append(z_GD_temp)  # z^GD
+                visit_list.append(z_GA_temp)  # z^GD
+
             visit_list.append(-1)  # r
             x_tour.append(visit_list)
 
@@ -156,7 +162,7 @@ def rough_value(X, type = None):
             b_num += 1
             b_id = b_num
             b_j = 0
-            b_list = [b_num, v_i, v_j, v_z_GD, v_z_GD]  # [b_i, i, j, z^BS, z^BF]  此时视驳船出发为到达大门时间 （后续视成团情况对z^BS, z^BF更新）
+            b_list = [b_id, v_i, v_j, v_z_GD, v_z_GD]  # [b_i, i, j, z^BS, z^BF]  此时视驳船出发为到达大门时间 （后续视成团情况对z^BS, z^BF更新）
             B.append(b_list)
         else:  # 集合中查找
 
@@ -212,7 +218,7 @@ def rough_value(X, type = None):
         # 找到所有同程的游团，并将其按照出发时间排列
         same_trip = []
         for x_list in x_tour:
-            if x_list[1] == v_i and x_list[2] == v_j and x_list[0] != v_index:
+            if x_list[1] == v_i and x_list[2] == v_j and x_list[0] != v_id:
                 same_trip.append(x_list)
 
         if same_trip:
@@ -260,11 +266,11 @@ def rough_value(X, type = None):
                     # 删除所有还没有被安排的行程
                     x_tour = [x for x in x_tour if x[-1] != -1]
                     # 加入从该景点返回的行程
-                    x_tour.append([v_index, v_j, 0, v_z_GD, v_z_GA, -1])
+                    x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
                 else:
                     # 对该游团的行程进行写入
                     for index in range(len(x_tour)):
-                        if x_tour[index][0] == v_id  and x_tour[index][1] == v_i:
+                        if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
                             x_tour[index][3] = v_z_GD
                             x_tour[index][4] = v_z_GA
                             x_tour[index][5] = 1
@@ -275,6 +281,7 @@ def rough_value(X, type = None):
             else:
                 # 出发时间为最大时间
                 v_z_GD_max = sorted_same_trip[same_index - 1][3]
+                print(sorted_same_trip)
                 max_z_v = max(v_z_GD_max, B[-1][4] + tau[b_j, v_i])
                 wait_total += abs(max_z_v - v_z_GD)
                 # 实际出发时间
@@ -288,22 +295,22 @@ def rough_value(X, type = None):
                 if v_z_GA > model_index.TE and v_j != 0:
                     # 对该游团的行程进行写入
                     for index in range(len(x_tour)):
-                        if x_tour[index][0] == v_id  and x_tour[index][1] == v_i:
+                        if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
                             x_tour[index][3] = v_z_GD
                             x_tour[index][4] = v_z_GA
                             x_tour[index][5] = 1
                     # 删除所有还没有被安排的行程
                     x_tour = [x for x in x_tour if x[-1] != -1]
                     # 加入从该景点返回的行程
-                    x_tour.append([v_index, v_j, 0, v_z_GD, v_z_GA, -1])
+                    x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
                 else:
                     # 对该游团的行程进行写入
                     for index in range(len(x_tour)):
-                        if x_tour[index][0] == v_id  and x_tour[index][1] == v_i:
+                        if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
                             x_tour[index][3] = v_z_GD
                             x_tour[index][4] = v_z_GA
                             x_tour[index][5] = 1
-                        if x_tour[index][0] == v_id  and x_tour[index][1] == v_j and v_j != 0:
+                        if x_tour[index][0] == v_id and x_tour[index][1] == v_j and v_j != 0:
                             x_tour[index][3] = v_z_GD_next
                 # 对下属的同行景点进行写入
                 for ii in range(same_index):
@@ -319,7 +326,8 @@ def rough_value(X, type = None):
                         # 删除所有还没有被安排的行程
                         x_tour = [x for x in x_tour if x[-1] != -1]
                         # 加入从该景点返回的行程
-                        x_tour.append([v_index, v_j, 0, v_z_GD, v_z_GA, -1])
+                        x_tour.append([v_ii, v_j, 0, v_z_GD, v_z_GA, -1])
+
                     else:
                         # 对该游团的行程进行写入
                         for index in range(len(x_tour)):
@@ -348,20 +356,20 @@ def rough_value(X, type = None):
             if v_z_GA > model_index.TE and v_j != 0:
                 # 对该游团的行程进行写入
                 for index in range(len(x_tour)):
-                    if x_tour[index][0] == v_index and x_tour[index][1] == v_i:
+                    if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
                         x_tour[index][4] = v_z_GA
                         x_tour[index][5] = 1
                 # 删除所有还没有被安排的行程
                 x_tour = [x for x in x_tour if x[-1] != -1]
                 # 加入从该景点返回的行程
-                x_tour.append([v_index, v_j, 0, v_z_GD, v_z_GA, -1])
+                x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
             else:
             # 对该游团的行程进行写入
                 for index in range(len(x_tour)):
-                    if x_tour[index][0] == v_index and x_tour[index][1] == v_i:
+                    if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
                         x_tour[index][4] = v_z_GA
                         x_tour[index][5] = 1
-                    if x_tour[index][0] == v_index and x_tour[index][1] == v_j and v_j != 0:
+                    if x_tour[index][0] == v_id and x_tour[index][1] == v_j and v_j != 0:
                         x_tour[index][3] = v_z_GD_next
             # 对驳船行程进行写入
             B.append([b_id, v_i, v_j, v_z_GD, v_z_GA])
@@ -476,8 +484,8 @@ X = {}
 for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
-#
-best_solution, best_fitness = Ts_optimize(X, type=2)
+
+# best_solution, best_fitness = Ts_optimize(X, type=2)
 
 
 # X, v, i, j = near_x(X)
@@ -489,6 +497,6 @@ best_solution, best_fitness = Ts_optimize(X, type=2)
 # print(x_tour)
 
 
-# x_tour, cost = rough_value(X, type=1)
-# print(cost)
-# print(x_tour)
+x_tour, cost = rough_value(X, type=1)
+print(cost)
+print(x_tour)
