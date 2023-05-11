@@ -113,7 +113,7 @@ def X_split(X):
                 visit_list.append(z_GA_temp)  # z^GA
             else:
                 z_GD_temp = z_GA_temp + ts[visit_list[0], visit_list[1]]
-                z_GA_temp = z_GA_temp + tau[visit_list[1], visit_list[2]]
+                z_GA_temp = z_GD_temp + tau[visit_list[1], visit_list[2]]
                 visit_list.append(z_GD_temp)  # z^GD
                 visit_list.append(z_GA_temp)  # z^GD
 
@@ -256,17 +256,23 @@ def rough_value(X, type = None):
                     v_z_GD_next = v_z_GA + ts[v_id, v_j]
                 # 在写入之前加入对是否超时返回的判断
                 # 如果超时，标记该行程，并删除所有未被标记的行程，并添加该点到景区大门的行程
-                if v_z_GA > model_index.TE and v_j != 0:
-                    # 对该游团的行程进行写入
-                    for index in range(len(x_tour)):
-                        if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
-                            x_tour[index][3] = v_z_GD
-                            x_tour[index][4] = v_z_GA
-                            x_tour[index][5] = 1
+                if v_z_GD > model_index.TE and v_j != 0:
+                    # # 对该游团的行程进行写入
+                    # for index in range(len(x_tour)):
+                    #     if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
+                    #         x_tour[index][3] = v_z_GD
+                    #         x_tour[index][4] = v_z_GA
+                    #         x_tour[index][5] = 1
                     # 删除所有还没有被安排的行程
-                    x_tour = [x for x in x_tour if x[-1] != -1]
+                    x_tour_new = []
+                    for x in x_tour:
+                        if x[-1] == -1 and x[0] == v_id:
+                            pass
+                        else:
+                            x_tour_new.append(x)
+                    x_tour = x_tour_new
                     # 加入从该景点返回的行程
-                    x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
+                    x_tour.append([v_id, v_i, 0, v_z_GD, v_z_GA, -1])
                 else:
                     # 对该游团的行程进行写入
                     for index in range(len(x_tour)):
@@ -280,8 +286,7 @@ def rough_value(X, type = None):
                 B.append([b_id, v_i, v_j, v_z_GD, v_z_GA])
             else:
                 # 出发时间为最大时间
-                v_z_GD_max = sorted_same_trip[same_index - 1][3]
-                print(sorted_same_trip)
+                v_z_GD_max = z_GD_temp
                 max_z_v = max(v_z_GD_max, B[-1][4] + tau[b_j, v_i])
                 wait_total += abs(max_z_v - v_z_GD)
                 # 实际出发时间
@@ -292,17 +297,23 @@ def rough_value(X, type = None):
                 if v_j != 0:
                     v_z_GD_next = v_z_GA + ts[v_id, v_j]
                 # 如果超时，标记该行程，并删除所有未被标记的行程，并添加该点到景区大门的行程
-                if v_z_GA > model_index.TE and v_j != 0:
-                    # 对该游团的行程进行写入
-                    for index in range(len(x_tour)):
-                        if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
-                            x_tour[index][3] = v_z_GD
-                            x_tour[index][4] = v_z_GA
-                            x_tour[index][5] = 1
+                if v_z_GD > model_index.TE and v_j != 0:
+                    # # 对该游团的行程进行写入
+                    # for index in range(len(x_tour)):
+                    #     if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
+                    #         x_tour[index][3] = v_z_GD
+                    #         x_tour[index][4] = v_z_GA
+                    #         x_tour[index][5] = 1
                     # 删除所有还没有被安排的行程
-                    x_tour = [x for x in x_tour if x[-1] != -1]
+                    x_tour_new = []
+                    for x in x_tour:
+                        if x[-1] == -1 and x[0] == v_id:
+                            pass
+                        else:
+                            x_tour_new.append(x)
+                    x_tour = x_tour_new
                     # 加入从该景点返回的行程
-                    x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
+                    x_tour.append([v_id, v_i, 0, v_z_GD, v_z_GA, -1])
                 else:
                     # 对该游团的行程进行写入
                     for index in range(len(x_tour)):
@@ -315,27 +326,34 @@ def rough_value(X, type = None):
                 # 对下属的同行景点进行写入
                 for ii in range(same_index):
                     v_ii = sorted_same_trip[ii][0]
+                    v_i = sorted_same_trip[ii][1]
                     v_j = sorted_same_trip[ii][2]
                     # 如果超时，标记该行程，并删除所有未被标记的行程，并添加该点到景区大门的行程
-                    if v_z_GA > model_index.TE and v_j != 0:
-                        # 对该游团的行程进行写入
-                        for index in range(len(x_tour)):
-                            if x_tour[index][0] == v_ii and x_tour[index][1] == v_i:
-                                x_tour[index][4] = v_z_GA
-                                x_tour[index][5] = 1
+                    if v_z_GD > model_index.TE and v_j != 0:
+                        # # 对该游团的行程进行写入
+                        # for index in range(len(x_tour)):
+                        #     if x_tour[index][0] == v_ii and x_tour[index][1] == v_i:
+                        #         x_tour[index][4] = v_z_GA
+                        #         x_tour[index][5] = 1
                         # 删除所有还没有被安排的行程
-                        x_tour = [x for x in x_tour if x[-1] != -1]
+                        x_tour_new = []
+                        for x in x_tour:
+                            if x[-1] == -1 and x[0] == v_ii:
+                                pass
+                            else:
+                                x_tour_new.append(x)
+                        x_tour = x_tour_new
                         # 加入从该景点返回的行程
-                        x_tour.append([v_ii, v_j, 0, v_z_GD, v_z_GA, -1])
+                        x_tour.append([v_ii, v_i, 0, v_z_GD, v_z_GA, -1])
 
                     else:
                         # 对该游团的行程进行写入
                         for index in range(len(x_tour)):
-                            if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
+                            if x_tour[index][0] == v_ii and x_tour[index][1] == v_i:
                                 x_tour[index][3] = v_z_GD
                                 x_tour[index][4] = v_z_GA
                                 x_tour[index][5] = 1
-                            if x_tour[index][0] == v_id and x_tour[index][1] == v_j and v_j != 0:
+                            if x_tour[index][0] == v_ii and x_tour[index][1] == v_j and v_j != 0:
                                 x_tour[index][3] = v_z_GD_next
 
                 # 对驳船行程进行写入
@@ -353,16 +371,22 @@ def rough_value(X, type = None):
                 v_z_GD_next = v_z_GA + ts[v_id, v_j]
             # 在写入之前加入对是否超时返回的判断
             # 如果超时，标记该行程，并删除所有未被标记的行程，并添加该点到景区大门的行程
-            if v_z_GA > model_index.TE and v_j != 0:
-                # 对该游团的行程进行写入
-                for index in range(len(x_tour)):
-                    if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
-                        x_tour[index][4] = v_z_GA
-                        x_tour[index][5] = 1
+            if v_z_GD > model_index.TE and v_j != 0:
+                # # 对该游团的行程进行写入
+                # for index in range(len(x_tour)):
+                #     if x_tour[index][0] == v_id and x_tour[index][1] == v_i:
+                #         x_tour[index][4] = v_z_GA
+                #         x_tour[index][5] = 1
                 # 删除所有还没有被安排的行程
-                x_tour = [x for x in x_tour if x[-1] != -1]
+                x_tour_new = []
+                for x in x_tour:
+                    if x[-1] == -1 and x[0] == v_id:
+                        pass
+                    else:
+                        x_tour_new.append(x)
+                x_tour = x_tour_new
                 # 加入从该景点返回的行程
-                x_tour.append([v_id, v_j, 0, v_z_GD, v_z_GA, -1])
+                x_tour.append([v_id, v_i, 0, v_z_GD, v_z_GA, -1])
             else:
             # 对该游团的行程进行写入
                 for index in range(len(x_tour)):
@@ -485,7 +509,7 @@ for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
 
-# best_solution, best_fitness = Ts_optimize(X, type=2)
+best_solution, best_fitness = Ts_optimize(X, type=2)
 
 
 # X, v, i, j = near_x(X)
@@ -495,8 +519,8 @@ print(X)
 
 # x_tour = X_split(X)
 # print(x_tour)
-
-
-x_tour, cost = rough_value(X, type=1)
-print(cost)
-print(x_tour)
+#
+#
+# x_tour, cost = rough_value(X, type=1)
+# print(cost)
+# print(x_tour)
