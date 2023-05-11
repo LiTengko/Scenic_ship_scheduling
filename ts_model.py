@@ -499,11 +499,6 @@ def Ts_optimize(X, type=None):
 
 
 
-
-
-
-
-
 # 生成初始化的字典变量
 X = {}
 for v_i in range(1, model_index.V_NUM + 1):

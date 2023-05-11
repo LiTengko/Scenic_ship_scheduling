@@ -261,7 +261,7 @@ tau_data = pd.DataFrame(tau_matrix)
 output_file = os.path.join(model_index.output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
 
-"""
+
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
 # 替换TE为相距7:00的时间
@@ -271,5 +271,4 @@ df['TE'] = df['TE'].apply(time_diff_in_minutes)
 # Save the modified dataframe to the same CSV file
 df.to_csv('./data/visitor.csv', index=False)
 
-"""
 
