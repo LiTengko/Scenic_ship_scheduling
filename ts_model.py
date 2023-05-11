@@ -21,9 +21,10 @@ import data_read
 import random
 import gurobipy as gb
 import numpy as np
+import time
 # 循环参数指定
-max_iterations = 1000  # 最大迭代次数
-tabu_length = 20  # 禁忌列表长度
+max_iterations = 8000  # 最大迭代次数
+tabu_length = 15  # 禁忌列表长度
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -509,14 +510,18 @@ for v_i in range(1, model_index.V_NUM + 1):
     X[v_i] = TSP_optimize(v_i)
 print(X)
 
+stat_time = time.time()
 best_solution, best_fitness = Ts_optimize(X, type=2)
+end_time = time.time()
+run_time = end_time - stat_time
+print("Total run time:", run_time)
 
 
 # X, v, i, j = near_x(X)
 # print(X)
 # print([v, i, j])
 
-
+#
 # x_tour = X_split(X)
 # print(x_tour)
 #
