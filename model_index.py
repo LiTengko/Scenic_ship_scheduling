@@ -25,11 +25,11 @@ R_MAX 每船最大行程数
 # import lib
 import os
 
-P_NUM = 4
-V_NUM = 5
-B_NUM = 3
+P_NUM = 7
+V_NUM = 50
+B_NUM = 30
 Cb = 20
-R_MAX = 10
+R_MAX = 15
 # 指定系数
 P_all_a = 80  # 一票制票价
 P_all_b = 50  # 两部制票价
