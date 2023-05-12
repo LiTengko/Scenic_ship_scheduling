@@ -25,6 +25,7 @@ import time
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
 tabu_length = 15  # 禁忌列表长度
+max_count = 300
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -439,6 +440,7 @@ def Ts_optimize(X, type=None):
     current_solution = X  # 当前解
     current_fitness = rough_value(X, type=type)  # 当前解的评价
     neighbor_fitness = 0  # 邻域解的评价
+    Count = 0
     # 当前解的邻域
     neighborhood = []
 
@@ -448,7 +450,12 @@ def Ts_optimize(X, type=None):
 
     # 主循环
     for i in range(max_iterations):
+        Count += 1
         print(f"Iteration {i + 1}, Best fitness = {best_fitness}")
+        print(Count)
+        if Count >= max_count:
+            print("max count reached")
+            break
 
         # 新建一个空的候选邻居解列表
         candidate_neighbors = []
@@ -479,6 +486,7 @@ def Ts_optimize(X, type=None):
         if neighbor_fitness > best_fitness:
             best_solution = next_solution.copy()
             best_fitness = neighbor_fitness
+            Count = 0  # 重新计数
 
         # 更新禁忌列表，将所有禁忌列表中的元素的值减1，并移除所有倒计时到0的元素
         for i_i in range(tabu_list.shape[0]):
