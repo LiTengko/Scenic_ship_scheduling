@@ -25,7 +25,7 @@ import time
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
 tabu_length = 15  # 禁忌列表长度
-max_count = 3000  # 最大重复次数，小规模问题下设置与max_iterations相同
+max_count = 500  # 最大重复次数，小规模问题下设置与max_iterations相同
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -197,12 +197,13 @@ def rough_value(X, type = None):
                         b_z_BF = b_z_BF_temp
 
             # 核算再添加一艘船的成本
-            cost_add = model_index.c3 * tau[v_i, 0] + model_index.c2 * 1 / (0.5 * model_index.R_MAX)  # 行驶成本 + 船使用成本(均摊到最大行程的 1/2)
-            if cost_add < cost:
-                b_num += 1
-                b_id = b_num
-                b_j = 0
-                add_flag = 1
+            if b_num < model_index.B_NUM:
+                cost_add = model_index.c3 * tau[v_i, 0] + model_index.c2 * 1 / (0.5 * model_index.R_MAX)  # 行驶成本 + 船使用成本(均摊到最大行程的 1/2)
+                if cost_add < cost:
+                    b_num += 1
+                    b_id = b_num
+                    b_j = 0
+                    add_flag = 1
 
             # 判断是否要加入空程
             if add_flag == 1:
@@ -409,11 +410,14 @@ def rough_value(X, type = None):
         tour_cost += model_index.c3 * tau[b_ii[1], b_ii[2]]
     fix_cost = model_index.c2 * b_num
     if type == 1:
+        print(f"wait_total={wait_total}, tour_cost = {tour_cost},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_a}")
         return model_index.c1 * N_total * model_index.P_all_a - (wait_cost + tour_cost + fix_cost), x_tour
+
     elif type == 2:
         for x_ii in x_tour:
             if x_ii[2] != 0:
                 price_income += model_index.c1 * Nv[x_ii[0]] * model_index.pm[x_ii[2]]
+        print(f"wait_total={wait_total}, tour_cost = {tour_cost},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_b + price_income}")
         return model_index.c1 * N_total * model_index.P_all_b + price_income - (wait_cost + tour_cost + fix_cost), x_tour
 
 def near_x(X):
@@ -514,7 +518,7 @@ for v_i in range(1, model_index.V_NUM + 1):
 print(X)
 
 stat_time = time.time()
-best_solution, best_fitness = Ts_optimize(X, type=1)
+best_solution, best_fitness = Ts_optimize(X, type=2)
 end_time = time.time()
 run_time = end_time - stat_time
 print("Total run time:", run_time)
