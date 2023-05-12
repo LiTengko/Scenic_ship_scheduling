@@ -25,7 +25,7 @@ import time
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
 tabu_length = 15  # 禁忌列表长度
-max_count = 500  # 最大重复次数，小规模问题下设置与max_iterations相同
+max_count = 1000  # 最大重复次数，小规模问题下设置与max_iterations相同
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -410,14 +410,14 @@ def rough_value(X, type = None):
         tour_cost += model_index.c3 * tau[b_ii[1], b_ii[2]]
     fix_cost = model_index.c2 * b_num
     if type == 1:
-        print(f"wait_total={wait_total}, tour_cost = {tour_cost},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_a}")
+        print(f"wait_total={wait_total}, tour_time = {tour_cost/model_index.c3},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_a}")
         return model_index.c1 * N_total * model_index.P_all_a - (wait_cost + tour_cost + fix_cost), x_tour
 
     elif type == 2:
         for x_ii in x_tour:
             if x_ii[2] != 0:
                 price_income += model_index.c1 * Nv[x_ii[0]] * model_index.pm[x_ii[2]]
-        print(f"wait_total={wait_total}, tour_cost = {tour_cost},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_b + price_income}")
+        print(f"wait_total={wait_total}, tour_time = {tour_cost/model_index.c3},b_num = {b_num},price_income = {model_index.c1 * N_total * model_index.P_all_b + price_income}")
         return model_index.c1 * N_total * model_index.P_all_b + price_income - (wait_cost + tour_cost + fix_cost), x_tour
 
 def near_x(X):
