@@ -20,6 +20,8 @@ import gurobipy as gp
 from threading import Thread
 
 # 读取 MPS 文件并创建 Gurobi 模型对象
+import model_generate
+
 model1 = gp.read("./data/price_1_small_c4_1.MPS")
 model2 = gp.read("./data/price_2_small_c4_1.MPS")
 
@@ -27,13 +29,30 @@ model2 = gp.read("./data/price_2_small_c4_1.MPS")
 # 创建模型求解线程
 def worker(model):
     # 设置模型参数
+    # 参数自动调优
+    model.resetParams()
+    model.params.TuneTimeLimit = 500
+    model.tune()
+
     # 设置最大求解时间
-    model.Params.TimeLimit = 7200  # s
+    model.Params.TimeLimit = 1200  # s
+    # model.Params.Presolve = 2
+    # model.params.Cuts = 3
+    # model.Params.Aggregate = 2
+
+
     # 可设置迭代中使用启发式模式
     # model.setParam('Heuristics', 1)
     # model.setParam('HeuristicsMode', 0)
     # model.setParam('HeuristicsFreq', 1000)
+
+    model.Params.MIPFocus = 3
+    # 在模型中使用回调函数
+    # model.setParam('LazyConstraints', 1)
+    # model._callback = model_generate.mycallback
+    # model.optimize(model_generate.mycallback)
     model.optimize()
+
     # 输出变量的解值
     for v in model.getVars():
         if (v.x - 0) != 0:
@@ -59,3 +78,7 @@ print("\033[33m=================================================================
 thread2.start()
 # 等待线程2结束
 thread2.join()
+
+
+
+

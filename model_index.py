@@ -25,9 +25,9 @@ R_MAX 每船最大行程数
 # import lib
 import os
 
-P_NUM = 4
-V_NUM = 35
-B_NUM = 200
+P_NUM = 3
+V_NUM = 4
+B_NUM = 5
 Cb = 40
 R_MAX = 15
 # 指定系数

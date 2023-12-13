@@ -26,7 +26,7 @@ import data_read
 设置为2生成两部制模型
 ！！请不要设置为其他值
 '''
-Model = 2
+Model = 1
 
 # 指定系数
 P_all_a = model_index.P_all_a  # 一票制票价
@@ -38,7 +38,7 @@ c3 = model_index.c3   # 行驶成本系数c3
 c4 = model_index.c4   # 等待成本系数c4
 TE = model_index.TE   # 最晚入园时间
 
-M = 100000  # 大整数
+M = 5000  # 大整数
 e = 1  # 小整数
 
 if not os.path.exists(model_index.output_folder):
@@ -74,10 +74,10 @@ else:
     y = m.addVars(arcs, B, R[1], vtype=GRB.BINARY, name="y")  # y_ijbr (37)
     L = m.addVars(V_ID, P, vtype=GRB.BINARY, name="L")  # L_vi (38)
     # 时间整型变量
-    z_GA = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GA")  # z^GA_vi
-    z_GD = m.addVars(V_ID, P, vtype=GRB.INTEGER, name="z_GD")  # z^GD_vi
-    z_BF = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
-    z_BS = m.addVars(R[1], B, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
+    z_GA = m.addVars(V_ID, P, ub=600, lb=0, vtype=GRB.INTEGER, name="z_GA")  # z^GA_vi
+    z_GD = m.addVars(V_ID, P, ub=600, lb=0, vtype=GRB.INTEGER, name="z_GD")  # z^GD_vi
+    z_BF = m.addVars(R[1], B, ub=600, lb=0, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
+    z_BS = m.addVars(R[1], B, ub=600, lb=0, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
     """目标函数"""
     # 一票制票价
@@ -287,3 +287,50 @@ else:
         m.write('./data/price_2_small_c4_1.MPS')
         print("写入模型2")
 
+
+def mycallback(model, where):
+    if where == GRB.Callback.MIPSOL:
+        # 在新的整数解中添加惰性约束
+        # for v_i in V_ID:
+        #     for i_i in Pv[v_i]:
+        #         z_GD_val = model.cbGetSolution(z_GD[v_i, i_i])
+        #         z_GA_val = model.cbGetSolution(z_GA[v_i, i_i])
+        #
+        #         x_val_1 = sum(
+        #             model.cbGetSolution(x[v_i, i_i, j_i, b_i, r_i]) for j_i in Pv[v_i] + [0] for b_i in B for r_i in
+        #             R[b_i])
+        #         x_val_2 = sum(
+        #             model.cbGetSolution(x[v_i, j_i, i_i, b_i, r_i]) for j_i in Pv[v_i] + [0] for b_i in B for r_i in
+        #             R[b_i])
+        #         if z_GD_val - z_GA_val - ts[v_i, i_i] + M * (1 - x_val_1) + M * (1 - x_val_2) >= 0:
+        #             model.cbLazy(z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]
+        #                          + M * (1 - gb.quicksum(
+        #                 x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i]))
+        #                          + M * (1 - gb.quicksum(
+        #                 x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i])) >= 0)
+
+        for v_i in V_ID:
+            for j_i in Pv[v_i]:
+                # 创建约束表达式
+                lhs_19 = gb.quicksum(
+                    x[v_i, l_i, j_i, b_i, r_i] for l_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i]
+                    if (v_i, l_i, j_i, b_i, r_i) in x)
+                rhs_19 = gb.quicksum(
+                    x[v_i, j_i, i_i, b_i, r_i] for i_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i]
+                    if (v_i, j_i, i_i, b_i, r_i) in x)
+
+                # 添加约束
+                model.addConstr(lhs_19 <= rhs_19)
+
+            #
+            # # 添加约束(20)
+            # for b_i in B:
+            #     for r_i in R[b_i]:
+            #         if r_i >= 2:
+            #             lhs_20 = gb.quicksum(model.cbGetSolution(y[i_i, 0, b_i, r_i]) for i_i in P if i_i != 0)
+            #             rhs_20_1 = gb.quicksum(
+            #                 model.cbGetSolution(y[i_i, j_i, b_i, (r_i - 1)]) for i_i in P for j_i in P if j_i != 0)
+            #             rhs_20_2 = gb.quicksum(model.cbGetSolution(y[i_i, j_i, b_i, r_i]) for i_i in P for j_i in P if
+            #                            j_i != 0 and i_i != j_i)
+            #             if lhs_20 is not None and rhs_20_1 is not None and rhs_20_2 is not None and lhs_20 >= (rhs_20_1 - rhs_20_2):
+            #                 model.cbLazy(lhs_20 - (rhs_20_1 - rhs_20_2) >= 0)
