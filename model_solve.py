@@ -30,9 +30,9 @@ model2 = gp.read("./data/price_2_small_c4_1.MPS")
 def worker(model):
     # 设置模型参数
     # 参数自动调优
-    model.resetParams()
-    model.params.TuneTimeLimit = 500
-    model.tune()
+    # model.resetParams()
+    # model.params.TuneTimeLimit = 500
+    # model.tune()
 
     # 设置最大求解时间
     model.Params.TimeLimit = 1200  # s

@@ -112,7 +112,8 @@ else:
 
     # 设定目标函数
     if Model == 1:
-        m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+        # m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
+        m.setObjective(price_1 - fix_cost - operate_cost, GRB.MAXIMIZE)  # (9)
         print("目标函数为price_1")
     else:
         m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
