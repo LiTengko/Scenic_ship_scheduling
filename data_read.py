@@ -45,6 +45,28 @@ def create_tau():
         # 打印字典
         return dict_ij
 
+def creat_Aij():
+    '''
+    从 Aij.csv中创建 multidict 变量
+    其中键为(i,j),值为对应位置的0或者1
+    :return: 字典变量Aij
+    '''
+    file_path = os.path.join(model_index.output_folder, "Aij.csv")
+    if not os.path.exists(file_path):
+        print("需要先生成Aij.csv")
+    else:
+        # 读取数据表文件
+        df = pd.read_csv(file_path)
+        # 创建空字典
+        dict_ij = {}
+        # 遍历数据表，将每个(i,j)位置的值添加到字典中
+        for i in range(len(df.index)):
+            for j in range(len(df.columns)):
+                key = (i + 1, j + 1)
+                value = df.iloc[i, j]
+                dict_ij[key] = value
+        # 打印字典
+        return dict_ij
 
 def create_Nv_Te():
     """

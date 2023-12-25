@@ -105,7 +105,22 @@ def generate_tau_matrix(size):
     return tau_matrix
 
 
-
+def generate_A_matrix(size, ij_list):
+    """
+    生成size*size的A矩阵,list对应位置(i,j)和(j,i)为1，其余为0
+    :param size: 矩阵规模
+    :param list: 位置(i,j)
+    :return: A_matrix
+    """
+    A_matrix = np.zeros((size, size))
+    # 如果list 为空直接返回
+    if len(ij_list) == 0:
+        return A_matrix
+    else:
+        for i in range(len(ij_list)):
+            A_matrix[ij_list[i][0]][ij_list[i][1]] = 1
+            A_matrix[ij_list[i][1]][ij_list[i][0]] = 1
+        return A_matrix
 
 
 def time_period(time):
@@ -160,7 +175,7 @@ def guss_int_generate(min_num, max_num):
     :param max:
     :return: int
     """
-    mean = (min_num + max_num)/2  # 选择均值，使得整数范围在min到max之间
+    mean = (min_num + max_num) / 2  # 选择均值，使得整数范围在min到max之间
     std_dev = 0.85  # 标准差
 
     random_float = np.random.normal(loc=mean, scale=std_dev)
@@ -199,7 +214,8 @@ def ts_generate(csv_file):
             if period == 1:
                 num_positions = guss_int_generate(math.ceil(model_index.P_NUM * 0.7), model_index.P_NUM)
             elif period == 2:
-                num_positions = guss_int_generate(math.ceil(model_index.P_NUM * 0.5), math.ceil(model_index.P_NUM * 0.8))
+                num_positions = guss_int_generate(math.ceil(model_index.P_NUM * 0.5),
+                                                  math.ceil(model_index.P_NUM * 0.8))
             elif period == 3:
                 num_positions = guss_int_generate(1, math.ceil(model_index.P_NUM * 0.3))
             else:
@@ -235,12 +251,11 @@ def time_diff_in_minutes(time_str):
     return time_diff.seconds // 60
 
 
-
 # visitor 数据表生成
 visitor_num = generate_Nv(model_index.V_NUM)
 time_slots = generate_time_slots(model_index.V_NUM)
 visitor_dict = {
-    'ID': list(range(1, model_index.V_NUM+1)),
+    'ID': list(range(1, model_index.V_NUM + 1)),
     'TE': time_slots,
     'NV': visitor_num,
 }
@@ -249,9 +264,16 @@ visitor_data = pd.DataFrame(visitor_dict)
 output_file = os.path.join(model_index.output_folder, "visitor.csv")
 visitor_data.to_csv(output_file, index=False)
 
-
 '''数据生成，注释掉此部分以固定数据'''
 
+# A_ij 数据表生成
+# 调用generate_A_matrix生成A_ij矩阵
+# A_ij = generate_A_matrix(model_index.P_NUM, [(1, 2)])
+A_ij = generate_A_matrix(model_index.P_NUM, [])
+# 写入数据表./data/Aij.csv
+A_ij_data = pd.DataFrame(A_ij)
+output_file = os.path.join(model_index.output_folder, "Aij.csv")
+A_ij_data.to_csv(output_file, index=False)
 
 # tau 数据表生成
 # 包含有大门，因此最终矩阵规模为 P_NUM + 1
@@ -261,7 +283,6 @@ tau_data = pd.DataFrame(tau_matrix)
 output_file = os.path.join(model_index.output_folder, "tau.csv")
 tau_data.to_csv(output_file, index=False)
 
-
 # ts 数据表生成
 ts_generate('./data/visitor.csv')
 # 替换TE为相距7:00的时间
@@ -270,5 +291,3 @@ df = pd.read_csv('./data/visitor.csv')
 df['TE'] = df['TE'].apply(time_diff_in_minutes)
 # Save the modified dataframe to the same CSV file
 df.to_csv('./data/visitor.csv', index=False)
-
-

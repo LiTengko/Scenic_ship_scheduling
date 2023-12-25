@@ -25,7 +25,7 @@ import time
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
 tabu_length = 15  # 禁忌列表长度
-max_count = 1000  # 最大重复次数，小规模问题下设置与max_iterations相同
+max_count = 8000  # 最大重复次数，小规模问题下设置与max_iterations相同
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -518,10 +518,12 @@ for v_i in range(1, model_index.V_NUM + 1):
 print(X)
 
 stat_time = time.time()
-best_solution, best_fitness = Ts_optimize(X, type=2)
+best_solution, best_fitness = Ts_optimize(X, type=1)
 end_time = time.time()
 run_time = end_time - stat_time
 print("Total run time:", run_time)
+print("Best_solution", best_solution)
+print("Best_fitness", best_fitness)
 
 
 # X, v, i, j = near_x(X)
