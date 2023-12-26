@@ -31,7 +31,7 @@ def worker(model):
     # 设置模型参数
     # 参数自动调优
     # model.resetParams()
-    # model.params.TuneTimeLimit = 500
+    # model.params.TuneTimeLimit = 50
     # model.tune()
 
     # 设置最大求解时间
@@ -57,6 +57,7 @@ def worker(model):
     for v in model.getVars():
         if (v.x - 0) != 0:
             print(f"{v.varName}: {v.x}")
+
 
 
 # 创建两个线程分别运行两个模型

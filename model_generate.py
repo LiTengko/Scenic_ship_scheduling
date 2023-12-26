@@ -26,7 +26,7 @@ import data_read
 设置为2生成两部制模型
 ！！请不要设置为其他值
 '''
-Model = 1
+Model = 2
 
 # 指定系数
 P_all_a = model_index.P_all_a  # 一票制票价
@@ -82,7 +82,14 @@ else:
     z_BF = m.addVars(R[1], B, lb=0, ub=700, vtype=GRB.INTEGER, name="z_BF")  # z^BF_rb
     z_BS = m.addVars(R[1], B, lb=0, ub=700, vtype=GRB.INTEGER, name="z_BS")  # z^BS_rb
 
+    Price = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name="Price")  # Price
+    Fix_cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name="Fix_cost")  # Fix_cost
+    Operate_cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name="Operate_cost")  # Operate_cost
+    Wait_cost = m.addVar(lb=0, vtype=GRB.CONTINUOUS, name="Wait_cost")
+
+
     """目标函数"""
+    '''
     # 一票制票价
     price_1 = gb.quicksum(P_all_a * c1 * Nv[v_i] for v_i in V_ID)  # (1)
     # 两部制票价
@@ -116,16 +123,56 @@ else:
                     for i_i in Pv[v_i])
         for v_i in V_ID)  # (6)
     wait_cost = wait_cost_1 + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)  # (5) & (6) & (7)
+    '''
 
     # 设定目标函数
-    if Model == 1:
-        m.setObjective(price_1 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (9)
-        print("目标函数为price_1")
-    else:
-        m.setObjective(price_2 - fix_cost - operate_cost - wait_cost, GRB.MAXIMIZE)  # (10)
-        print("目标函数为price_2")
+    m.setObjective(Price - Fix_cost - Operate_cost - Wait_cost, GRB.MAXIMIZE)  # (8.9)
 
     """设定约束"""
+    # 目标函数子项
+    m.addConstr((Fix_cost == gb.quicksum(gb.quicksum(c2 * y[0, j_i, b_i, 1] for j_i in P if j_i != 0) for b_i in B)), name="(3)")
+
+    m.addConstr((Operate_cost == gb.quicksum(
+        gb.quicksum(
+            gb.quicksum(
+                gb.quicksum(c3 * tau[i_i, j_i] * y[i_i, j_i, b_i, r_i]
+                            for j_i in P) for i_i in P)
+            for r_i in R[b_i])
+        for b_i in B)), name="(4)")
+
+    m.addConstr((Wait_cost == gb.quicksum(
+        gb.quicksum(c4 * (z_GD[v_i, i_i] - z_GA[v_i, i_i] - ts[v_i, i_i]) * gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in B)
+                    for i_i in Pv[v_i])
+        for v_i in V_ID) + gb.quicksum(c4 * (z_GD[v_i, 0] - Te[v_i]) for v_i in V_ID)), name="(5.6.7)")
+
+    if Model == 1:
+        m.addConstr((Price == gb.quicksum(P_all_a * c1 * Nv[v_i] for v_i in V_ID)), name="(1)")
+        print("目标函数为price_1")
+    else:
+        m.addConstr((Price == gb.quicksum(
+        gb.quicksum(
+            gb.quicksum(
+                gb.quicksum(
+                    gb.quicksum(c1 * pm[j_i] * Nv[v_i] * x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i])
+                    for i_i in Pv[v_i] + [0])
+                for r_i in R[b_i])
+            for b_i in B)
+        for v_i in V_ID) + gb.quicksum(P_all_b * c1 * Nv[v_i] for v_i in V_ID)), name="(2)")
+        print("目标函数为price_2")
+
+    # 约束条件
+    m.addConstrs((
+        (L[v_i, i_i] == 0) >> (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i]) for r_i in R[b_i]) for b_i in B) == 1)
+        for v_i in V_ID for i_i in Pv[v_i] + [0]
+    ), name="(10.1)")
+    m.addConstrs((
+        (L[v_i, j_i] == 0) >> (gb.quicksum(
+            gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for i_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in
+            B) == 1)
+        for v_i in V_ID for j_i in Pv[v_i] + [0]
+    ), name="(10.2)")
+
+    '''
     m.addConstrs((
         (gb.quicksum(
             gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i]) for b_i in B)
@@ -151,11 +198,12 @@ else:
     m.addConstrs((
         (gb.quicksum(
             gb.quicksum(
-                gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] - M * L[v_i, i_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i])
+                gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] + M * L[v_i, i_i] for j_i in Pv[v_i] + [0]) for r_i in R[b_i])
             for b_i in
             B) >= 1)
         for v_i in V_ID for i_i in Pv[v_i] + [0]
     ), name="(10.4)")
+    '''
 
     # m.addConstrs((
     #     (gb.quicksum(gb.quicksum(gb.quicksum(x[v_i, i_i, j_i, b_i, r_i] for r_i in R[b_i]) for b_i in B)
@@ -226,7 +274,7 @@ else:
 
     m.addConstrs((
         (gb.quicksum(y[0, j_i, b_i, 1] for j_i in P if j_i != 0) == gb.quicksum(
-            gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P if i_i != 0))
+            gb.quicksum(y[i_i, j_i, b_i, 2] for j_i in P) for i_i in P))
         for b_i in B
     ), name="(20)")
 
@@ -266,15 +314,18 @@ else:
         for b_i in B for r_i in R[b_i] for v_i in V_ID
     ), name="(25)")
 
+    # m.addConstrs((
+    #     (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i] + M * (gb.quicksum(1 - x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i])) )
+    #     for v_i in V_ID for i_i in Pv[v_i]
+    # ), name="(26)")
     m.addConstrs((
-        (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i] + M * (gb.quicksum(1 - x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i])) )
-        for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(26)")
+        (z_GA[v_i, i_i] - TE <= M * L[v_i, i_i] for v_i in V_ID for i_i in Pv[v_i])), name="(26)")
 
     m.addConstrs((
-        (-z_GA[v_i, i_i] + TE + e <= M * (1 - L[v_i, i_i]) + M * (gb.quicksum(1 - x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0] for b_i in B for r_i in R[b_i])) )
-        for v_i in V_ID for i_i in Pv[v_i]
-    ), name="(27)")
+        L[v_i, 0] == 0 for v_i in V_ID), name="(26.1)")
+
+    m.addConstrs((
+        (-z_GA[v_i, i_i] + TE + e <= M * (1 - L[v_i, i_i]))for v_i in V_ID for i_i in Pv[v_i]), name="(27)")
 
     m.addConstrs((
         (z_GA[v_i, i_i] >= z_BF[r_i, b_i] - M * (1 - gb.quicksum(x[v_i, j_i, i_i, b_i, r_i] for j_i in Pv[v_i] + [0])))
