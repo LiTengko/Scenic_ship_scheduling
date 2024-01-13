@@ -268,7 +268,7 @@ visitor_data.to_csv(output_file, index=False)
 
 # A_ij 数据表生成
 # 调用generate_A_matrix生成A_ij矩阵
-# A_ij = generate_A_matrix(model_index.P_NUM, [(1, 2)])
+# A_ij = generate_A_matrix(model_index.P_NUM, [(0, 1)]) # 0,1 对应位置为 1，2
 A_ij = generate_A_matrix(model_index.P_NUM, [])
 # 写入数据表./data/Aij.csv
 A_ij_data = pd.DataFrame(A_ij)

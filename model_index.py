@@ -29,7 +29,7 @@ P_NUM = 3
 V_NUM = 4
 B_NUM = 3
 Cb = 20
-R_MAX = 4
+R_MAX = 5
 # 指定系数
 P_all_a = 80  # 一票制票价
 P_all_b = 50  # 两部制票价
@@ -40,6 +40,9 @@ c3 = 2   # 行驶成本系数c3
 c4 = 3   # 等待成本系数c4
 
 TE = 570  # 设置最晚入园时间为16:30,计算与7：00的差值为570 min  注意！设置TE时应小于游客入园时间TE
+
+Z1 = 120  # 连通性的起始时间
+Z2 = 550  # 连通性的结束时间
 
 output_folder = "./data"
 if not os.path.exists(output_folder):

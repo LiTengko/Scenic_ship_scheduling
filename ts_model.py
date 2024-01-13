@@ -22,10 +22,12 @@ import random
 import gurobipy as gb
 import numpy as np
 import time
+import os
+import pandas as pd
 # 循环参数指定
 max_iterations = 8000  # 最大迭代次数
 tabu_length = 15  # 禁忌列表长度
-max_count = 8000  # 最大重复次数，小规模问题下设置与max_iterations相同
+max_count = 5000  # 最大重复次数，小规模问题下设置与max_iterations相同
 
 # 读取数据表中的信息
 tau = data_read.create_tau()  # tau[i,j]
@@ -456,6 +458,11 @@ def Ts_optimize(X, type=None):
     for i in range(max_iterations):
         Count += 1
         print(f"Iteration {i + 1}, Best fitness = {best_fitness}")
+        # # 新建fitness.xlsx文件，将best_fitness追加写入
+        # output_file = os.path.join(model_index.output_folder, "fitness.csv")
+        # fitness = pd.DataFrame(best_fitness[0:1])
+        # fitness.to_csv(output_file, index=False, mode='a', header=False)
+
         print(Count)
         if Count >= max_count:
             print("max count reached")
@@ -518,7 +525,7 @@ for v_i in range(1, model_index.V_NUM + 1):
 print(X)
 
 stat_time = time.time()
-best_solution, best_fitness = Ts_optimize(X, type=1)
+best_solution, best_fitness = Ts_optimize(X, type=2)
 end_time = time.time()
 run_time = end_time - stat_time
 print("Total run time:", run_time)
